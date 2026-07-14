@@ -4,6 +4,7 @@ import io.legado.app.constant.AppLog
 import io.legado.app.constant.BookType
 import io.legado.app.data.dao.BookChapterDao
 import io.legado.app.data.dao.BookDao
+import io.legado.app.data.dao.ReadRecordDao
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
@@ -68,6 +69,7 @@ enum class BatchChangeSourcePreviewStatus {
 class ChangeBookSourceUseCase(
     private val bookDao: BookDao,
     private val bookChapterDao: BookChapterDao,
+    private val readRecordDao: ReadRecordDao,
 ) {
 
     fun applyMigration(
@@ -97,6 +99,7 @@ class ChangeBookSourceUseCase(
         bookChapterDao.delByBook(oldBook.bookUrl)
         bookDao.delete(oldBook)
         bookDao.insert(newBook)
+        readRecordDao.replaceBookUrl(oldBookUrl, newBook.bookUrl)
         if (options.migrateChapters) {
             bookChapterDao.insert(*chapters.toTypedArray())
             ReadBook.onChapterListUpdated(newBook)

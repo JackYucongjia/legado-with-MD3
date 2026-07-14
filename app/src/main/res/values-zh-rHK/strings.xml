@@ -1,7 +1,7 @@
 <resources>
     <!--App-->
-    <string name="app_name">閲讀</string>
-    <string name="app_name_a">閲讀·A</string>
+    <string name="app_name">且看</string>
+    <string name="app_name_a">且看·A</string>
     <string name="receiving_shared_label">閲讀·搜尋</string>
     <string name="tip_perm_request_storage">閲讀需要訪問存儲卡權限，請前往「設定」—「應用程式權限」—開啟所需要的權限</string>
 
@@ -99,7 +99,7 @@
         \u3000\u3000這是一款使用 Kotlin 全新開發的開源的閲讀應用程式，歡迎你的加入。
     </string>
     <string name="app_share_description">
-        閲讀3.0下載地址：\nhttps://github.com/gedoor/legado/releases
+        且看 3.0 下載地址：\nhttps://gitea.yamby.cn/yusheng/QieKan-3.0/releases
     </string>
     <string name="version_name">Version %s</string>
     <string name="pt_background_verification">後臺校驗書源</string>
@@ -1145,9 +1145,10 @@
     <string name="file_manage_summary">管理私有文件夹的文件</string>
     <string name="create_folder">创建文件夹</string>
     <string name="allow_drop_down_refresh">允许下拉刷新</string>
-    <string name="private_group">設為私隱分組</string>
-    <string name="disable_private_group">關閉私隱分組</string>
-    <string name="private_group_desc">開啟後，本分組內嘅書籍將從公開書架隱藏</string>
+    <string name="private_group">設為隱藏分組</string>
+    <string name="disable_private_group">關閉隱藏分組</string>
+    <string name="private_group_desc">開啟後，本分組及其中書籍會在私隱模式下隱藏</string>
+    <string name="privacy_mode">私隱模式</string>
     <string name="text_underline">文字下划线</string>
     <string name="select_new_source">选中新增源</string>
     <string name="select_update_source">选中更新源</string>

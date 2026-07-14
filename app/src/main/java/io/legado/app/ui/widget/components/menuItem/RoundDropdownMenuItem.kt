@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.ui.theme.ThemeResolver
 import io.legado.app.ui.widget.components.icon.AppIcon
+import io.legado.app.ui.widget.components.text.hiddenAttributeUnderline
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Check
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -50,6 +51,7 @@ fun RoundDropdownMenuItem(
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
     enabled: Boolean = true,
+    hidden: Boolean = false,
     contentPadding: PaddingValues = MenuDefaults.DropdownMenuItemContentPadding,
     interactionSource: MutableInteractionSource? = null,
 ) {
@@ -88,7 +90,9 @@ fun RoundDropdownMenuItem(
                     contentAlignment = Alignment.CenterStart
                 ) {
                     MiuixText(
-                        modifier = Modifier.widthIn(max = 200.dp),
+                        modifier = Modifier
+                            .widthIn(max = 200.dp)
+                            .hiddenAttributeUnderline(hidden, textColor),
                         text = text,
                         fontSize = MiuixTheme.textStyles.body1.fontSize,
                         fontWeight = FontWeight.Medium,
@@ -157,7 +161,9 @@ fun RoundDropdownMenuItem(
                     contentAlignment = Alignment.CenterStart
                 ) {
                     Text(
-                        modifier = Modifier.widthIn(max = 200.dp),
+                        modifier = Modifier
+                            .widthIn(max = 200.dp)
+                            .hiddenAttributeUnderline(hidden, contentColor),
                         text = text,
                         style = LegadoTheme.typography.labelLargeEmphasized,
                         color = contentColor

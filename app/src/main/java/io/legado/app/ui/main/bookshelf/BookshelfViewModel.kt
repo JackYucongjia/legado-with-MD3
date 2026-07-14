@@ -10,6 +10,7 @@ import io.legado.app.base.BaseViewModel
 import io.legado.app.constant.AppConst
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.EventBus
+import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
@@ -18,6 +19,7 @@ import io.legado.app.data.repository.BookGroupRepository
 import io.legado.app.data.repository.BookRepository
 import io.legado.app.data.repository.BookSourceRepository
 import io.legado.app.data.repository.BookshelfRepository
+import io.legado.app.data.repository.SettingsRepository
 import io.legado.app.data.repository.UploadRepository
 import io.legado.app.domain.usecase.AddBookUseCase
 import io.legado.app.domain.usecase.BatchCacheDownloadUseCase
@@ -81,6 +83,7 @@ class BookshelfViewModel(
     private val bookGroupRepository: BookGroupRepository,
     private val bookSourceRepository: BookSourceRepository,
     private val bookshelfRepository: BookshelfRepository,
+    private val settingsRepository: SettingsRepository,
     private val uploadRepository: UploadRepository,
     private val batchCacheDownloadUseCase: BatchCacheDownloadUseCase,
     private val updateBooksGroupUseCase: UpdateBooksGroupUseCase,
@@ -108,6 +111,13 @@ class BookshelfViewModel(
     private data class BookshelfSortConfig(
         val sort: Int,
         val sortOrder: Int
+    )
+
+    private data class GroupBooksConfig(
+        val groups: List<BookGroup>,
+        val sortConfig: BookshelfSortConfig,
+        val privacyModeEnabled: Boolean,
+        val privateGroupMask: Long
     )
 
     private fun readSortConfig() = BookshelfSortConfig(
@@ -142,7 +152,40 @@ class BookshelfViewModel(
     protected val _eventChannel = Channel<BaseRuleEvent>()
     val events = _eventChannel.receiveAsFlow()
 
-    val groupsFlow: SharedFlow<List<BookGroup>> = bookGroupRepository.flowShow()
+    val allGroupsFlow: StateFlow<List<BookGroup>> = bookGroupRepository.flowAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val privacyModeFlow: StateFlow<Boolean> = settingsRepository
+        .getBoolean(PreferKey.bookshelfPrivacyMode, true)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    private val privateGroupMaskFlow: StateFlow<Long> = allGroupsFlow
+        .map { groups ->
+            groups.asSequence()
+                .filter {
+                    (it.groupId > 0L || it.groupId == Long.MIN_VALUE) && it.isPrivate
+                }
+                .fold(0L) { mask, group -> mask or group.groupId }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
+
+    private val allBooksIncludingPrivateFlow = bookRepository.flowBookShelfIncludingPrivate()
+        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5000), replay = 1)
+
+    private val displayedAllBookCountFlow = combine(
+        bookRepository.flowAllBookShelfCount(),
+        allBooksIncludingPrivateFlow,
+        privacyModeFlow
+    ) { publicCount, allBooks, privacyModeEnabled ->
+        if (privacyModeEnabled) publicCount else allBooks.size
+    }
+
+    val groupsFlow: SharedFlow<List<BookGroup>> = combine(
+        bookGroupRepository.flowShow(),
+        privacyModeFlow
+    ) { groups, privacyModeEnabled ->
+        if (privacyModeEnabled) groups.filterNot { it.isPrivate } else groups
+    }
         .onEach {
             if (it.isNotEmpty()) {
                 isInitialLoadingFlow.value = false
@@ -150,8 +193,21 @@ class BookshelfViewModel(
         }
         .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5000), replay = 1)
 
-    val allGroupsFlow: StateFlow<List<BookGroup>> = bookGroupRepository.flowAll()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    private fun displayedBooksFlow(
+        groupId: Long,
+        privacyModeEnabled: Boolean
+    ): Flow<List<BookShelfItem>> {
+        return if (
+            !privacyModeEnabled &&
+            (groupId == BookGroup.IdAll || groupId > 0L || groupId == Long.MIN_VALUE)
+        ) {
+            allBooksIncludingPrivateFlow.map { books ->
+                if (groupId == BookGroup.IdAll) books else books.filter { (it.group and groupId) != 0L }
+            }
+        } else {
+            bookRepository.flowBookShelfByGroup(groupId)
+        }
+    }
 
     private data class GroupPreviewState(
         val previews: ImmutableMap<Long, ImmutableList<BookUiItem>>,
@@ -180,38 +236,44 @@ class BookshelfViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BookshelfGroupSelectorState())
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val booksFlow: Flow<List<BookUiItem>> = groupIdFlow
-        .flatMapLatest { groupId ->
+    val booksFlow: Flow<List<BookUiItem>> = combine(
+        groupIdFlow,
+        privacyModeFlow
+    ) { groupId, privacyModeEnabled -> groupId to privacyModeEnabled }
+        .flatMapLatest { (groupId, privacyModeEnabled) ->
             combine(
-                bookRepository.flowBookShelfByGroup(groupId),
-                groupsFlow,
-                sortConfigFlow
-            ) { list, groups, sortConfig ->
+                displayedBooksFlow(groupId, privacyModeEnabled),
+                allGroupsFlow,
+                sortConfigFlow,
+                privateGroupMaskFlow
+            ) { list, groups, sortConfig, privateGroupMask ->
                 bookshelfRepository.sortBooks(
                     list,
                     groups.find { it.groupId == groupId },
                     sortConfig.sort,
                     sortConfig.sortOrder
-                ).map { it.toUiItem() }
+                ).map { it.toUiItem(privateGroupMask) }
             }
         }.distinctUntilChanged().flowOn(Dispatchers.Default)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val allGroupBooksImmutableFlow: Flow<ImmutableMap<Long, ImmutableList<BookUiItem>>> =
-        combine(groupsFlow, sortConfigFlow) { groups, sortConfig ->
-            groups to sortConfig
-        }.flatMapLatest { (groups, sortConfig) ->
+        combine(groupsFlow, sortConfigFlow, privacyModeFlow, privateGroupMaskFlow) {
+                groups, sortConfig, privacyModeEnabled, privateGroupMask ->
+            GroupBooksConfig(groups, sortConfig, privacyModeEnabled, privateGroupMask)
+        }.flatMapLatest { config ->
+            val groups = config.groups
             if (groups.isEmpty()) {
                 flowOf(persistentMapOf())
             } else {
                 val flows = groups.map { group ->
-                    bookRepository.flowBookShelfByGroup(group.groupId).map { books ->
+                    displayedBooksFlow(group.groupId, config.privacyModeEnabled).map { books ->
                         group.groupId to bookshelfRepository.sortBooks(
                             books,
                             group,
-                            sortConfig.sort,
-                            sortConfig.sortOrder
-                        ).map { it.toUiItem() }.toImmutableList()
+                            config.sortConfig.sort,
+                            config.sortConfig.sortOrder
+                        ).map { it.toUiItem(config.privateGroupMask) }.toImmutableList()
                     }
                 }
                 combine(flows) { results ->
@@ -256,7 +318,7 @@ class BookshelfViewModel(
         groupsFlow,
         bookGroupStyleFlow,
         bookRepository.flowSystemGroupCounts(),
-        bookRepository.flowAllBookShelfCount()
+        displayedAllBookCountFlow
     ) { groups, bookGroupStyle, systemCounts, totalCount ->
         DataForPreviews(
             groups,
@@ -276,7 +338,9 @@ class BookshelfViewModel(
             flowOf(GroupPreviewState(persistentMapOf(), persistentMapOf(), allBookCount))
         } else {
             val groupFlows = groups.map { group ->
-                val countFlow: Flow<Int> = if (group.groupId > 0) {
+                val countFlow: Flow<Int> = if (
+                    group.groupId > 0L || group.groupId == Long.MIN_VALUE
+                ) {
                     bookRepository.flowUserGroupBookCount(group.groupId)
                 } else {
                     flowOf(systemCountsMap[group.groupId] ?: 0)
@@ -372,7 +436,7 @@ class BookshelfViewModel(
         GroupPreviewState(persistentMapOf(), persistentMapOf(), 0)
     )
 
-    private val dataStateFlow = combine(
+    private val dataCoreFlow = combine(
         booksFlow,
         groupsFlow,
         allGroupsFlow,
@@ -380,14 +444,21 @@ class BookshelfViewModel(
         internalStateFlow
     ) { books, groups, allGroups, previews, internal ->
         BookshelfDataCore(books, groups, allGroups, previews, internal)
-    }.combine(allGroupBooksImmutableFlow) { core, allGroupBooks ->
+    }
+
+    private val dataStateFlow = combine(
+        dataCoreFlow,
+        allGroupBooksImmutableFlow,
+        privacyModeFlow
+    ) { core, allGroupBooks, privacyModeEnabled ->
         BookshelfDataState(
             books = core.books,
             groups = core.groups.map { it.toBookGroupUi() },
             allGroups = core.allGroups.map { it.toBookGroupUi() },
             previews = core.previews,
             internal = core.internal,
-            allGroupBooks = allGroupBooks
+            allGroupBooks = allGroupBooks,
+            privacyModeEnabled = privacyModeEnabled
         )
     }
 
@@ -405,7 +476,8 @@ class BookshelfViewModel(
         val allGroups: List<BookGroupUi>,
         val previews: GroupPreviewState,
         val internal: InternalState,
-        val allGroupBooks: ImmutableMap<Long, ImmutableList<BookUiItem>>
+        val allGroupBooks: ImmutableMap<Long, ImmutableList<BookUiItem>>,
+        val privacyModeEnabled: Boolean
     )
 
     val uiState: StateFlow<BookshelfUiState> = combine(
@@ -459,6 +531,7 @@ class BookshelfViewModel(
             bookGroupStyle = interaction.bookGroupStyle,
             bookshelfSort = internal.sortConfig.sort,
             bookshelfSortOrder = internal.sortConfig.sortOrder,
+            privacyModeEnabled = data.privacyModeEnabled,
             title = title,
             subtitle = when {
                 interaction.isEditMode -> {
@@ -505,6 +578,14 @@ class BookshelfViewModel(
 
         viewModelScope.launch {
             groupPreviewsFlow.collect { groupPreviewsStateFlow.value = it }
+        }
+        viewModelScope.launch {
+            combine(privacyModeFlow, allGroupsFlow, groupIdFlow) {
+                    privacyModeEnabled, groups, groupId ->
+                privacyModeEnabled && groups.any { it.groupId == groupId && it.isPrivate }
+            }.distinctUntilChanged().filter { it }.collect {
+                changeGroup(BookGroup.IdAll)
+            }
         }
         viewModelScope.launch {
             combine(booksFlow, selectedGroupCanReorderFlow) { books, canReorderBooks ->
@@ -582,6 +663,12 @@ class BookshelfViewModel(
             searchKeyFlow.value = ""
         }
         clearSelection()
+    }
+
+    fun setPrivacyMode(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.putBoolean(PreferKey.bookshelfPrivacyMode, enabled)
+        }
     }
 
     fun showOverlay(overlay: BookshelfOverlay) {

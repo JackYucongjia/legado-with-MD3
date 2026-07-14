@@ -9,6 +9,7 @@ data class ReadRecord(
     var bookName: String = "",
     @ColumnInfo(defaultValue = "")
     var bookAuthor: String = "",
+    var bookUrl: String? = null,
     @ColumnInfo(defaultValue = "0")
     var readTime: Long = 0L,
     @ColumnInfo(defaultValue = "0")

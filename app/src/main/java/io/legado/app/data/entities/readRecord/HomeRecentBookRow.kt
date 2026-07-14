@@ -3,6 +3,7 @@ package io.legado.app.data.entities.readRecord
 data class HomeRecentBookRow(
     val recordName: String,
     val recordAuthor: String,
+    val recordBookUrl: String?,
     val bookUrl: String?,
     val origin: String?,
     val coverUrl: String?,

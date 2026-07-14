@@ -13,6 +13,7 @@ data class ReadRecordSession(
     val bookName: String = "",
     @ColumnInfo(defaultValue = "")
     val bookAuthor: String = "",
+    val bookUrl: String? = null,
 
     // 一次阅读的开始/结束
     val startTime: Long = 0,

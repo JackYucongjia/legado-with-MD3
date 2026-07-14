@@ -22,11 +22,14 @@ data class GroupBookCount(
     val count: Int
 )
 
+private const val USER_GROUP_ID_FILTER =
+    "(groupId > 0 OR groupId = ${Long.MIN_VALUE})"
+
 private const val PRIVATE_GROUP_MASK =
-    "(SELECT COALESCE(SUM(groupId), 0) FROM book_groups WHERE groupId > 0 AND isPrivate = 1)"
+    "(SELECT COALESCE(SUM(groupId), 0) FROM book_groups WHERE $USER_GROUP_ID_FILTER AND isPrivate = 1)"
 
 private const val PUBLIC_GROUP_MASK =
-    "(SELECT COALESCE(SUM(groupId), 0) FROM book_groups WHERE groupId > 0 AND isPrivate = 0)"
+    "(SELECT COALESCE(SUM(groupId), 0) FROM book_groups WHERE $USER_GROUP_ID_FILTER AND isPrivate = 0)"
 
 private const val PUBLIC_BOOK_FILTER =
     "(`group` = 0 OR (`group` & $PRIVATE_GROUP_MASK) = 0)"
@@ -162,6 +165,21 @@ interface BookDao {
     )
     fun flowBookShelf(): Flow<List<BookShelfItem>>
 
+    @Query(
+        """
+        SELECT
+            bookUrl, name, author, origin, originName,
+            coverUrl, customCoverUrl, durChapterTitle, durChapterTime,
+            durChapterPos, latestChapterTitle, latestChapterTime,
+            lastCheckCount, totalChapterNum, durChapterIndex,
+            type, `group`, `order`, canUpdate,
+            ifnull(customIntro, intro) as intro, kind, wordCount
+        FROM books
+        ORDER BY durChapterTime DESC
+        """
+    )
+    fun flowBookShelfIncludingPrivate(): Flow<List<BookShelfItem>>
+
     @Query("SELECT * FROM books WHERE type & ${BookType.audio} > 0")
     fun flowAudio(): Flow<List<Book>>
 
@@ -235,7 +253,7 @@ interface BookDao {
     @Query(
         """
         select * from books where type & ${BookType.audio} = 0 and type & ${BookType.local} = 0
-        and ((SELECT sum(groupId) FROM book_groups where groupId > 0) & `group`) = 0
+        and ((SELECT sum(groupId) FROM book_groups where groupId > 0 or groupId = ${Long.MIN_VALUE}) & `group`) = 0
         """
     )
     fun flowNetNoGroup(): Flow<List<Book>>
@@ -276,7 +294,7 @@ interface BookDao {
     @Query(
         """
         select * from books where type & ${BookType.local} > 0
-        and ((SELECT sum(groupId) FROM book_groups where groupId > 0) & `group`) = 0
+        and ((SELECT sum(groupId) FROM book_groups where groupId > 0 or groupId = ${Long.MIN_VALUE}) & `group`) = 0
         """
     )
     fun flowLocalNoGroup(): Flow<List<Book>>
@@ -314,7 +332,7 @@ interface BookDao {
     )
     fun flowBookShelfLocalNoGroup(): Flow<List<BookShelfItem>>
 
-    @Query("SELECT * FROM books WHERE (`group` & :group) > 0")
+    @Query("SELECT * FROM books WHERE (`group` & :group) != 0")
     fun flowByUserGroup(group: Long): Flow<List<Book>>
 
     @Query(
@@ -343,7 +361,7 @@ interface BookDao {
             kind,
             wordCount
         FROM books 
-        WHERE (`group` & :group) > 0
+        WHERE (`group` & :group) != 0
         AND ((SELECT isPrivate FROM book_groups WHERE groupId = :group) = 1 OR $PUBLIC_BOOK_FILTER)
         """
     )
@@ -671,7 +689,7 @@ interface BookDao {
     )
     fun flowBookShelfText(): Flow<List<BookShelfItem>>
 
-    @Query("SELECT * FROM books WHERE (`group` & :group) > 0")
+    @Query("SELECT * FROM books WHERE (`group` & :group) != 0")
     fun getBooksByGroup(group: Long): List<Book>
 
     @Query("SELECT * FROM books WHERE `name` in (:names)")
@@ -702,6 +720,15 @@ interface BookDao {
 
     @Query("SELECT * FROM books WHERE name = :name and author = :author")
     fun getBook(name: String, author: String): Book?
+
+    @Query(
+        """
+        SELECT * FROM books
+        WHERE name = :name AND author = :author
+        ORDER BY durChapterTime DESC, bookUrl ASC
+        """
+    )
+    fun getBooks(name: String, author: String): List<Book>
 
     @Query("""select distinct bs.* from books, book_sources bs 
         where origin == bookSourceUrl and origin not like '${BookType.localTag}%' 
@@ -774,7 +801,7 @@ interface BookDao {
     @Query("update books set `group` = :newGroupId where `group` = :oldGroupId")
     fun upGroup(oldGroupId: Long, newGroupId: Long)
 
-    @Query("update books set `group` = `group` - :group where `group` & :group > 0")
+    @Query("update books set `group` = `group` & ~:group where `group` & :group != 0")
     fun removeGroup(group: Long)
 
     @Query("delete from books where type & ${BookType.notShelf} > 0")
@@ -818,7 +845,7 @@ interface BookDao {
     @Query(
         """
         SELECT COUNT(*) FROM books
-        WHERE (`group` & :groupId) > 0
+        WHERE (`group` & :groupId) != 0
         AND ((SELECT isPrivate FROM book_groups WHERE groupId = :groupId) = 1 OR $PUBLIC_BOOK_FILTER)
         """
     )
@@ -1096,7 +1123,7 @@ interface BookDao {
             type, `group`, `order`, canUpdate,
             ifnull(customIntro, intro) as intro, kind, wordCount
         FROM books
-        WHERE (`group` & :groupId) > 0
+        WHERE (`group` & :groupId) != 0
             AND ((SELECT isPrivate FROM book_groups WHERE groupId = :groupId) = 1 OR $PUBLIC_BOOK_FILTER)
         ORDER BY durChapterTime DESC
         LIMIT 10

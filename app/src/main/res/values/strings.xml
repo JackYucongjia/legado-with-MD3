@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--App-->
-    <string name="app_name">Legado</string>
-    <string name="app_name_a">Legado·A</string>
+    <string name="app_name">且看</string>
+    <string name="app_name_a">且看·A</string>
     <string name="receiving_shared_label">Legado·search</string>
     <string name="tip_perm_request_storage">Legado needs storage access to find and read books. Please go "App Settings" to allow "Storage Permission".</string>
 
@@ -155,7 +155,7 @@
         \u3000\u3000 This is an open source reading software newly developed by Kotlin, welcome to join us.
     </string>
     <string name="app_share_description">
-        Legado (YueDu 3.0) download link：\n https://github.com/gedoor/legado/releases
+        QieKan 3.0 download link：\n https://gitea.yamby.cn/yusheng/QieKan-3.0/releases
     </string>
     <string name="version_name">Version %s</string>
     <string name="pt_background_verification">Background-verification</string>
@@ -1336,9 +1336,10 @@
     <string name="file_manage_summary">Managing files in the application\'s private folder</string>
     <string name="create_folder">Create Folder</string>
     <string name="allow_drop_down_refresh">Allow drop-down refresh</string>
-    <string name="private_group">Set as private group</string>
-    <string name="disable_private_group">Disable private group</string>
-    <string name="private_group_desc">After enabling, books in this group are hidden from the public bookshelf</string>
+    <string name="private_group">Set as hidden group</string>
+    <string name="disable_private_group">Disable hidden group</string>
+    <string name="private_group_desc">The group and its books are hidden while privacy mode is enabled</string>
+    <string name="privacy_mode">Privacy mode</string>
     <string name="text_underline">Text underline</string>
     <string name="select_new_source">Select new source</string>
     <string name="select_update_source">Select update source</string>

@@ -19,6 +19,7 @@ import io.legado.app.help.book.ContentProcessor
 import io.legado.app.utils.GSON
 import io.legado.app.utils.MD5Utils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 class AiToolRepository(
@@ -27,7 +28,8 @@ class AiToolRepository(
     private val bookmarkDao: BookmarkDao,
     private val readRecordDao: ReadRecordDao,
     private val aiArtifactDao: AiArtifactDao,
-    private val aiMemoryGateway: AiMemoryGateway
+    private val aiMemoryGateway: AiMemoryGateway,
+    private val bookPrivacyRepository: BookPrivacyRepository,
 ) : AiToolGateway {
 
     override fun availableTools(): List<AiToolDefinition> = tools
@@ -175,11 +177,15 @@ class AiToolRepository(
         return GSON.toJson(mapOf("bookmarks" to bookmarks))
     }
 
-    private fun getReadingStats(args: JsonObject): String {
+    private suspend fun getReadingStats(args: JsonObject): String {
         val query = args.string("query").orEmpty().trim()
         val date = args.string("date")?.trim().orEmpty()
         val limit = args.int("limit", 10).coerceIn(1, 30)
-        val records = readRecordDao.all
+        val privacyState = bookPrivacyRepository.observe().first()
+        val visibleRecords = readRecordDao.all.filter {
+            privacyState.isReadRecordVisible(it.bookUrl, it.bookName, it.bookAuthor)
+        }
+        val records = visibleRecords
             .asSequence()
             .filter {
                 query.isBlank() ||
@@ -200,7 +206,8 @@ class AiToolRepository(
         val dailyDetails = readRecordDao.allDetail
             .asSequence()
             .filter {
-                (date.isBlank() || it.date == date) &&
+                privacyState.isReadRecordVisible(it.bookUrl, it.bookName, it.bookAuthor) &&
+                    (date.isBlank() || it.date == date) &&
                     (query.isBlank() ||
                         it.bookName.contains(query, ignoreCase = true) ||
                         it.bookAuthor.contains(query, ignoreCase = true))
@@ -222,7 +229,7 @@ class AiToolRepository(
             .toList()
         return GSON.toJson(
             mapOf(
-                "totalReadTimeMillis" to readRecordDao.all.sumOf { it.readTime },
+                "totalReadTimeMillis" to visibleRecords.sumOf { it.readTime },
                 "recentRecords" to records,
                 "dailyDetails" to dailyDetails
             )

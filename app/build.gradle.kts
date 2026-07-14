@@ -51,7 +51,7 @@ android {
         applicationId = "io.legato.kazusa"
         minSdk = 26
         targetSdk = 37
-        versionCode = System.getenv("COMMIT_NUMBER")?.toInt()?.let { 10000 + it } ?: 32640
+        versionCode = System.getenv("COMMIT_NUMBER")?.toInt()?.let { 10000 + it } ?: 32641
         versionName = System.getenv("APP_VERSION_NAME") ?: projectVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -149,6 +149,22 @@ android {
 
     lint {
         checkDependencies = true
+    }
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.outputs.forEach { output ->
+            val abi = output.filters
+                .firstOrNull { it.filterType.name == "ABI" }
+                ?.identifier
+                ?: "universal"
+            output.outputFileName.set(
+                output.versionName.zip(output.versionCode) { versionName, versionCode ->
+                    "QieKan-$abi-$versionName-vc$versionCode.apk"
+                }
+            )
+        }
     }
 }
 

@@ -12,6 +12,7 @@ data class ReadRecordDetail(
     val bookName: String = "",
     @ColumnInfo(defaultValue = "")
     val bookAuthor: String = "",
+    val bookUrl: String? = null,
     val date: String = "",
 
     // 当天阅读总时长

@@ -115,7 +115,7 @@ fun GroupEditContent(
     val sortEntryValues = remember(sortOptions) {
         Array(sortOptions.size) { (it - 1).toString() }
     }
-    val canSetPrivate = group == null || group.groupId > 0
+    val canSetPrivate = group == null || group.groupId > 0 || group.groupId == Long.MIN_VALUE
 
     val selectImage = rememberLauncherForActivityResult(SelectImageContract()) { result ->
         result.uri?.let { uri ->

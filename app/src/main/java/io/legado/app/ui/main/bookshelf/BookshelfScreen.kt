@@ -65,6 +65,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.outlined.ViewCarousel
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -73,6 +74,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -238,7 +240,9 @@ fun BookshelfScreen(
     )
     val folderGridState = rememberLazyGridState()
     val standaloneSearchGridState = rememberLazyGridState()
-    val groupGridStates = mutableMapOf<Long, LazyGridState>()
+    // Pager may keep composing an old keyed page briefly after the visible group list changes.
+    // Retain states for removed groups until those pages are disposed to avoid a missing map key.
+    val groupGridStates = remember { mutableMapOf<Long, LazyGridState>() }
     uiState.groups.forEach { group ->
         key(group.groupId) {
             groupGridStates[group.groupId] = rememberLazyGridState()
@@ -508,6 +512,19 @@ fun BookshelfScreen(
                                     leadingIcon = { Icon(Icons.Outlined.ViewCarousel, null) }
                                 )
                                 RoundDropdownMenuItem(
+                                    text = stringResource(R.string.privacy_mode),
+                                    onClick = {
+                                        viewModel.setPrivacyMode(!uiState.privacyModeEnabled)
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.VisibilityOff, null) },
+                                    trailingIcon = {
+                                        Switch(
+                                            checked = uiState.privacyModeEnabled,
+                                            onCheckedChange = viewModel::setPrivacyMode
+                                        )
+                                    }
+                                )
+                                RoundDropdownMenuItem(
                                     text = stringResource(R.string.add_url),
                                     onClick = {
                                         viewModel.showOverlay(BookshelfOverlay.AddUrlDialog)
@@ -578,6 +595,9 @@ fun BookshelfScreen(
 
                             AppTabRow(
                                 tabTitles = tabTitles,
+                                hiddenTabIndices = uiState.groups.mapIndexedNotNull { index, group ->
+                                    index.takeIf { group.isPrivate }
+                                }.toSet(),
                                 selectedTabIndex = selectedTabIndex,
                                 onTabSelected = { index ->
                                     scope.launch { pagerState.animateScrollToPage(index) }
@@ -608,6 +628,7 @@ fun BookshelfScreen(
                                         uiState.groups.forEachIndexed { index, group ->
                                             RoundDropdownMenuItem(
                                                 text = group.groupName,
+                                                hidden = group.isPrivate,
                                                 onClick = {
                                                     if (uiState.isSearch) {
                                                         viewModel.changeGroup(group.groupId)
@@ -641,7 +662,9 @@ fun BookshelfScreen(
                                                 it.groupId == BookGroup.IdAll
                                             }
                                             val hiddenGroups = uiState.allGroups.filter {
-                                                !it.show && it.groupId != BookGroup.IdAll
+                                                !it.show &&
+                                                        it.groupId != BookGroup.IdAll &&
+                                                        (!uiState.privacyModeEnabled || !it.isPrivate)
                                             }
 
                                             if (allGroup != null || hiddenGroups.isNotEmpty()) {
@@ -656,6 +679,7 @@ fun BookshelfScreen(
                                                 allGroup?.let { group ->
                                                     RoundDropdownMenuItem(
                                                         text = group.groupName,
+                                                        hidden = group.isPrivate,
                                                         onClick = {
                                                             viewModel.changeGroup(group.groupId)
                                                             dismiss()
@@ -675,6 +699,7 @@ fun BookshelfScreen(
                                                 hiddenGroups.forEach { group ->
                                                     RoundDropdownMenuItem(
                                                         text = group.groupName,
+                                                        hidden = group.isPrivate,
                                                         onClick = {
                                                             viewModel.changeGroup(group.groupId)
                                                             dismiss()
@@ -999,6 +1024,7 @@ fun BookshelfScreen(
                             uiState.groups.forEach { group ->
                                 RoundDropdownMenuItem(
                                     text = group.groupName,
+                                    hidden = group.isPrivate,
                                     onClick = {
                                         val targetIndex =
                                             uiState.groups.indexOfFirst { it.groupId == group.groupId }
@@ -1140,7 +1166,10 @@ private fun BookshelfOverlays(
 
     GroupSelectSheet(
         show = activeOverlay == BookshelfOverlay.GroupSelectSheet,
-        groups = groups.filter { it.groupId > 0 },
+        groups = groups.filter {
+            (it.groupId > 0 || it.groupId == Long.MIN_VALUE) &&
+                (!uiState.privacyModeEnabled || !it.isPrivate)
+        },
         currentGroupId = 0L,
         onDismissRequest = { viewModel.dismissOverlay() },
         onConfirm = { groupId ->

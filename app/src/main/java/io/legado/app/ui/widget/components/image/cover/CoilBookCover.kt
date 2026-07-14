@@ -466,9 +466,11 @@ private fun CoverTextOverlay(
                     val startX = viewWidth * 0.84f
                     val fm = paint.fontMetrics
                     val charHeight = fm.bottom - fm.top
-                    var startY = viewHeight * 0.16f - (author.length * charHeight)
-                    startY = startY.coerceAtLeast(viewHeight * 0.2f)
-                    author.forEach { char ->
+                    val visibleAuthor = author.takeLast(
+                        ((viewHeight * 0.35f) / charHeight).toInt().coerceAtLeast(1)
+                    )
+                    var startY = viewHeight * 0.92f - (visibleAuthor.length - 1) * charHeight
+                    visibleAuthor.forEach { char ->
                         nativeCanvas.drawText(char.toString(), startX, startY, paint)
                         startY += charHeight
                     }

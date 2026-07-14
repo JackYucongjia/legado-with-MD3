@@ -214,17 +214,28 @@ object Restore : KoinComponent {
         }
         fileToListT<ReadRecord>(path, "readRecord.json")?.let {
             it.forEach { readRecord ->
-                if (readRecord.deviceId != androidId) {
+                val restoredRecord = readRecord.copy(
+                    bookUrl = resolveBookUrl(
+                        readRecord.bookUrl,
+                        readRecord.bookName,
+                        readRecord.bookAuthor,
+                    )
+                )
+                if (restoredRecord.deviceId != androidId) {
                     try {
-                        appDb.readRecordDao.insert(readRecord)
+                        appDb.readRecordDao.insert(restoredRecord)
                     } catch (_: SQLiteConstraintException) {
                     }
                 } else {
                     val time = appDb.readRecordDao
-                        .getReadTime(readRecord.deviceId, readRecord.bookName, readRecord.bookAuthor)
-                    if (time == null || time < readRecord.readTime) {
+                        .getReadTime(
+                            restoredRecord.deviceId,
+                            restoredRecord.bookName,
+                            restoredRecord.bookAuthor,
+                        )
+                    if (time == null || time < restoredRecord.readTime) {
                         try {
-                            appDb.readRecordDao.insert(readRecord)
+                            appDb.readRecordDao.insert(restoredRecord)
                         } catch (_: SQLiteConstraintException) {
                         }
                     }
@@ -234,7 +245,15 @@ object Restore : KoinComponent {
         fileToListT<ReadRecordDetail>(path, "readRecordDetail.json")?.let {
             it.forEach { detail ->
                 try {
-                    appDb.readRecordDao.insertDetail(detail)
+                    appDb.readRecordDao.insertDetail(
+                        detail.copy(
+                            bookUrl = resolveBookUrl(
+                                detail.bookUrl,
+                                detail.bookName,
+                                detail.bookAuthor,
+                            )
+                        )
+                    )
                 } catch (_: SQLiteConstraintException) {
                 }
             }
@@ -242,7 +261,15 @@ object Restore : KoinComponent {
         fileToListT<ReadRecordSession>(path, "readRecordSession.json")?.let {
             it.forEach { session ->
                 try {
-                    appDb.readRecordDao.insertSession(session)
+                    appDb.readRecordDao.insertSession(
+                        session.copy(
+                            bookUrl = resolveBookUrl(
+                                session.bookUrl,
+                                session.bookName,
+                                session.bookAuthor,
+                            )
+                        )
+                    )
                 } catch (_: SQLiteConstraintException) {
                 }
             }
@@ -408,6 +435,15 @@ object Restore : KoinComponent {
             e.printStackTrace()
         }
         return map
+    }
+
+    private suspend fun resolveBookUrl(
+        existingBookUrl: String?,
+        bookName: String,
+        bookAuthor: String,
+    ): String? {
+        if (!existingBookUrl.isNullOrBlank()) return existingBookUrl
+        return appDb.readRecordDao.findMatchingBookUrls(bookName, bookAuthor).singleOrNull()
     }
 
     private inline fun <reified T> fileToListT(path: String, fileName: String): List<T>? {

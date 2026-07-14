@@ -27,16 +27,16 @@ interface BookGroupDao {
         """
     with const as (
         SELECT
-            COALESCE(SUM(CASE WHEN groupId > 0 AND isPrivate = 0 THEN groupId ELSE 0 END), 0) sumPublicGroupId,
-            COALESCE(SUM(CASE WHEN groupId > 0 AND isPrivate = 1 THEN groupId ELSE 0 END), 0) sumPrivateGroupId
+            COALESCE(SUM(CASE WHEN (groupId > 0 OR groupId = ${Long.MIN_VALUE}) AND isPrivate = 0 THEN groupId ELSE 0 END), 0) sumPublicGroupId,
+            COALESCE(SUM(CASE WHEN (groupId > 0 OR groupId = ${Long.MIN_VALUE}) AND isPrivate = 1 THEN groupId ELSE 0 END), 0) sumPrivateGroupId
         FROM book_groups
     )
     SELECT book_groups.* FROM book_groups join const 
     where show > 0 
     and (
-        (groupId >= 0  and exists (
+        ((groupId >= 0 or groupId = ${Long.MIN_VALUE}) and exists (
             select 1 from books
-            where `group` & book_groups.groupId > 0
+            where `group` & book_groups.groupId != 0
             and (book_groups.isPrivate = 1 or `group` = 0 or (const.sumPrivateGroupId & `group`) = 0)
         ))
         or groupId = ${BookGroup.IdAll}
@@ -124,13 +124,13 @@ interface BookGroupDao {
     )
     val show: LiveData<List<BookGroup>>
 
-    @Query("SELECT * FROM book_groups where groupId >= 0 ORDER BY `order`")
+    @Query("SELECT * FROM book_groups where groupId >= 0 or groupId = ${Long.MIN_VALUE} ORDER BY `order`")
     fun flowSelect(): Flow<List<BookGroup>>
 
-    @get:Query("SELECT sum(groupId) FROM book_groups where groupId >= 0")
+    @get:Query("SELECT sum(groupId) FROM book_groups where groupId >= 0 or groupId = ${Long.MIN_VALUE}")
     val idsSum: Long
 
-    @get:Query("SELECT MAX(`order`) FROM book_groups where groupId >= 0")
+    @get:Query("SELECT MAX(`order`) FROM book_groups where groupId >= 0 or groupId = ${Long.MIN_VALUE}")
     val maxOrder: Int
 
     @get:Query("SELECT * FROM book_groups ORDER BY `order`")
@@ -142,7 +142,7 @@ interface BookGroupDao {
     @Query("update book_groups set show = 1 where groupId = :groupId")
     fun enableGroup(groupId: Long)
 
-    @Query("select groupName from book_groups where groupId > 0 and (groupId & :id) > 0")
+    @Query("select groupName from book_groups where (groupId > 0 or groupId = ${Long.MIN_VALUE}) and (groupId & :id) != 0")
     fun getGroupNames(id: Long): List<String>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

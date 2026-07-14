@@ -410,7 +410,7 @@ class ReadSettingsRepository(
             textBottomJustify = this[Keys.TextBottomJustify] ?: true,
             adaptSpecialStyle = this[Keys.AdaptSpecialStyle] ?: true,
             useZhLayout = this[Keys.UseZhLayout] ?: false,
-            showBrightnessView = this[Keys.ShowBrightnessView] ?: "1",
+            showBrightnessView = getStringCompat(PreferKey.showBrightnessView, "1"),
             brightnessVwPos = this[Keys.BrightnessVwPos] ?: "1",
             readBrightness = this[Keys.ReadBrightness] ?: 100,
             brightnessAuto = this[Keys.BrightnessAuto] ?: false,

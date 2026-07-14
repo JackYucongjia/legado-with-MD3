@@ -58,6 +58,7 @@ data class BookshelfUiState(
     val bookGroupStyle: Int = 0,
     val bookshelfSort: Int = 0,
     val bookshelfSortOrder: Int = 1,
+    val privacyModeEnabled: Boolean = true,
     val title: String = "",
     val subtitle: String? = null,
     val currentGroupName: String? = null,

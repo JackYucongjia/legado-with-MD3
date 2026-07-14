@@ -14,6 +14,9 @@ import kotlinx.coroutines.CoroutineScope
 
 object AppUpdateGitHub : AppUpdate.AppUpdateInterface {
 
+    private const val RELEASES_API =
+        "https://gitea.yamby.cn/api/v1/repos/yusheng/QieKan-3.0/releases"
+
     private val checkVariant: AppVariant
         get() = when (AppConfig.updateToVariant) {
             "official_version" -> AppVariant.OFFICIAL
@@ -24,9 +27,9 @@ object AppUpdateGitHub : AppUpdate.AppUpdateInterface {
 
     private suspend fun getLatestRelease(): List<AppReleaseInfo> {
         val url = if (checkVariant == AppVariant.OFFICIAL)
-            "https://api.github.com/repos/HapeLee/legado-with-MD3/releases/latest"
+            "$RELEASES_API/latest"
         else
-            "https://api.github.com/repos/HapeLee/legado-with-MD3/releases"
+            RELEASES_API
 
         val res = okHttpClient.newCallResponse { url(url) }
         if (!res.isSuccessful) throw NoStackTraceException("获取新版本出错(${res.code})")
@@ -65,7 +68,7 @@ object AppUpdateGitHub : AppUpdate.AppUpdateInterface {
     }
 
     suspend fun getReleaseByTag(tag: String): AppUpdate.UpdateInfo? {
-        val url = "https://api.github.com/repos/HapeLee/legado-with-MD3/releases/tags/$tag"
+        val url = "$RELEASES_API/tags/$tag"
         val res = okHttpClient.newCallResponse { url(url) }
         if (!res.isSuccessful) return null
 

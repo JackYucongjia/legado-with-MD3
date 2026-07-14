@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.ui.theme.ThemeResolver
 import io.legado.app.ui.widget.components.text.AppText
+import io.legado.app.ui.widget.components.text.hiddenAttributeUnderline
 import top.yukonga.miuix.kmp.basic.TabRowDefaults
 import top.yukonga.miuix.kmp.basic.TabRowWithContour
 
@@ -21,11 +22,12 @@ fun AppTabRow(
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    isScrollable: Boolean = true
+    isScrollable: Boolean = true,
+    hiddenTabIndices: Set<Int> = emptySet()
 ) {
     val composeEngine = LegadoTheme.composeEngine
 
-    if (ThemeResolver.isMiuixEngine(composeEngine)) {
+    if (ThemeResolver.isMiuixEngine(composeEngine) && hiddenTabIndices.isEmpty()) {
         TabRowWithContour(
             tabs = tabTitles,
             selectedTabIndex = selectedTabIndex,
@@ -50,7 +52,8 @@ fun AppTabRow(
                     AppTab(
                         selected = selectedTabIndex == index,
                         onClick = { onTabSelected(index) },
-                        title = title
+                        title = title,
+                        hidden = index in hiddenTabIndices
                     )
                 }
             }
@@ -65,7 +68,8 @@ fun AppTabRow(
                     AppTab(
                         selected = selectedTabIndex == index,
                         onClick = { onTabSelected(index) },
-                        title = title
+                        title = title,
+                        hidden = index in hiddenTabIndices
                     )
                 }
             }
@@ -77,7 +81,8 @@ fun AppTabRow(
 private fun AppTab(
     selected: Boolean,
     onClick: () -> Unit,
-    title: String
+    title: String,
+    hidden: Boolean
 ) {
     Tab(
         selected = selected,
@@ -88,7 +93,13 @@ private fun AppTab(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = LegadoTheme.typography.labelLargeEmphasized,
-                modifier = Modifier.padding(horizontal = 8.dp),
+                modifier = Modifier
+                    .padding(horizontal = 8.dp)
+                    .hiddenAttributeUnderline(
+                        hidden,
+                        if (selected) LegadoTheme.colorScheme.primary
+                        else LegadoTheme.colorScheme.onSurfaceVariant
+                    ),
                 color = if (selected) LegadoTheme.colorScheme.primary else LegadoTheme.colorScheme.onSurfaceVariant
             )
         }

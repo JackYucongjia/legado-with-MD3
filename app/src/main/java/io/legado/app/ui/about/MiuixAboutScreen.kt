@@ -84,7 +84,7 @@ fun MiuixAboutScreen(
     state: AboutUiState,
     onIntent: (AboutIntent) -> Unit,
     onBack: () -> Unit = {},
-    versionName: String = appInfo.versionName,
+    versionName: String = "${appInfo.versionName} (${appInfo.versionCode})",
 ) {
     val topAppBarScrollBehavior = MiuixScrollBehavior()
     val lazyListState = rememberLazyListState()
@@ -395,7 +395,7 @@ private fun AboutContent(
                             endActions = {
                                 ValueText("GitHub")
                             },
-                            onClick = { onIntent(AboutIntent.OpenUrl("https://github.com/HapeLee/legado-with-MD3")) },
+                            onClick = { onIntent(AboutIntent.OpenUrl("https://gitea.yamby.cn/yusheng/QieKan-3.0")) },
                         )
                     }
 

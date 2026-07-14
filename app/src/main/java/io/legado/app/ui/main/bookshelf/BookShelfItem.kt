@@ -50,7 +50,7 @@ data class BookShelfItem(
     /**
      * 将 DTO 转换为专为 Compose 设计的 UI 状态
      */
-    fun toUiItem(): BookUiItem {
+    fun toUiItem(privateGroupMask: Long = 0L): BookUiItem {
         val tagList = mutableListOf<String>()
         kind?.splitNotBlank(",", "\n")?.filter { it.isNotBlank() }?.let {
             tagList.addAll(it)
@@ -61,7 +61,8 @@ data class BookShelfItem(
 
         return BookUiItem(
             book = this,
-            displayTags = tagList.toImmutableList()
+            displayTags = tagList.toImmutableList(),
+            isHidden = privateGroupMask != 0L && (group and privateGroupMask) != 0L
         )
     }
 }
@@ -72,7 +73,8 @@ data class BookShelfItem(
 @Stable
 data class BookUiItem(
     val book: BookShelfItem,
-    val displayTags: ImmutableList<String>
+    val displayTags: ImmutableList<String>,
+    val isHidden: Boolean = false
 ) {
     fun matches(key: String): Boolean {
         return book.name.contains(key, true) ||

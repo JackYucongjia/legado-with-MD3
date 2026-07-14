@@ -124,6 +124,7 @@ object ReadBook : CoroutineScope by MainScope(), KoinComponent {
         ReadBook.book = book
         readRecord.bookName = book.name
         readRecord.bookAuthor = book.author
+        readRecord.bookUrl = book.bookUrl
         readRecord.readTime = appDb.readRecordDao.getReadTime("", book.name, book.author) ?: 0
         chapterSize = appDb.bookChapterDao.getChapterCount(book.bookUrl)
         simulatedChapterSize = if (book.readSimulating()) {
@@ -330,6 +331,7 @@ object ReadBook : CoroutineScope by MainScope(), KoinComponent {
                 deviceId = "",
                 bookName = currentBookName,
                 bookAuthor = currentBookAuthor,
+                bookUrl = book?.bookUrl,
                 startTime = readStartTime,
                 endTime = readStartTime,
                 words = durChapterIndex.toLong()

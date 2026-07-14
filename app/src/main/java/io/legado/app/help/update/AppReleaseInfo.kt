@@ -68,11 +68,12 @@ data class Asset(
     val downloadCount: Int,
     val id: Int,
     val name: String,
-    val state: String,
+    val state: String?,
     val url: String
 ) {
     val isValid: Boolean
-        get() = (contentType == "application/vnd.android.package-archive") && (state == "uploaded")
+        get() = name.endsWith(".apk", ignoreCase = true) &&
+                (state == null || state == "uploaded")
 
     fun assetToAppReleaseInfo(preRelease: Boolean, note: String, version: String): AppReleaseInfo {
         val instant = Instant.parse(createdAt)

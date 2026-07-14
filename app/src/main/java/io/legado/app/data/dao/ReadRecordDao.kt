@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import io.legado.app.data.entities.readRecord.HomeRecentBookRow
 import io.legado.app.data.entities.readRecord.ReadRecord
@@ -44,17 +45,26 @@ interface ReadRecordDao {
         """
         WITH recent AS (
             SELECT
-                bookName,
-                bookAuthor,
-                MAX(lastRead) AS lastRead
-            FROM readRecord
-            GROUP BY bookName, bookAuthor
-            ORDER BY lastRead DESC
-            LIMIT :limit
+                base.bookName,
+                base.bookAuthor,
+                (
+                    SELECT latest.bookUrl
+                    FROM readRecord AS latest
+                    WHERE latest.bookName = base.bookName
+                        AND latest.bookAuthor = base.bookAuthor
+                        AND latest.bookUrl IS NOT NULL
+                        AND latest.bookUrl != ''
+                    ORDER BY latest.lastRead DESC, latest.deviceId ASC
+                    LIMIT 1
+                ) AS recordBookUrl,
+                MAX(base.lastRead) AS lastRead
+            FROM readRecord AS base
+            GROUP BY base.bookName, base.bookAuthor
         )
         SELECT
             recent.bookName AS recordName,
             recent.bookAuthor AS recordAuthor,
+            recent.recordBookUrl AS recordBookUrl,
             book.bookUrl AS bookUrl,
             book.origin AS origin,
             book.coverUrl AS coverUrl,
@@ -63,18 +73,26 @@ interface ReadRecordDao {
             book.totalChapterNum AS totalChapterNum,
             book.durChapterIndex AS chapterIndex
         FROM recent
-        LEFT JOIN books AS book ON book.bookUrl = (
-            SELECT candidate.bookUrl
-            FROM books AS candidate
-            WHERE candidate.name = recent.bookName
-                AND candidate.author = recent.bookAuthor
-            ORDER BY candidate.durChapterTime DESC, candidate.bookUrl ASC
-            LIMIT 1
+        LEFT JOIN books AS book ON book.bookUrl = COALESCE(
+            (
+                SELECT currentBook.bookUrl
+                FROM books AS currentBook
+                WHERE currentBook.bookUrl = recent.recordBookUrl
+                LIMIT 1
+            ),
+            (
+                SELECT candidate.bookUrl
+                FROM books AS candidate
+                WHERE candidate.name = recent.bookName
+                    AND candidate.author = recent.bookAuthor
+                ORDER BY candidate.durChapterTime DESC, candidate.bookUrl ASC
+                LIMIT 1
+            )
         )
         ORDER BY recent.lastRead DESC
         """
     )
-    fun observeRecentHomeBooks(limit: Int): Flow<List<HomeRecentBookRow>>
+    fun observeRecentHomeBooks(): Flow<List<HomeRecentBookRow>>
 
     @Query("select sum(readTime) from readRecord where bookName = :bookName")
     fun getReadTime(bookName: String): Long?
@@ -84,6 +102,33 @@ interface ReadRecordDao {
 
     @Query("SELECT * FROM readRecord WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor")
     suspend fun getReadRecord(deviceId: String, bookName: String, bookAuthor: String): ReadRecord?
+
+    @Query(
+        """
+        SELECT bookUrl FROM books
+        WHERE TRIM(name) = TRIM(:bookName)
+            AND (:bookAuthor = '' OR author = :bookAuthor)
+        ORDER BY durChapterTime DESC, bookUrl ASC
+        LIMIT 2
+        """
+    )
+    suspend fun findMatchingBookUrls(bookName: String, bookAuthor: String): List<String>
+
+    @Query("UPDATE readRecord SET bookUrl = :newBookUrl WHERE bookUrl = :oldBookUrl")
+    fun replaceReadRecordBookUrl(oldBookUrl: String, newBookUrl: String)
+
+    @Query("UPDATE readRecordDetail SET bookUrl = :newBookUrl WHERE bookUrl = :oldBookUrl")
+    fun replaceReadRecordDetailBookUrl(oldBookUrl: String, newBookUrl: String)
+
+    @Query("UPDATE readRecordSession SET bookUrl = :newBookUrl WHERE bookUrl = :oldBookUrl")
+    fun replaceReadRecordSessionBookUrl(oldBookUrl: String, newBookUrl: String)
+
+    @Transaction
+    fun replaceBookUrl(oldBookUrl: String, newBookUrl: String) {
+        replaceReadRecordBookUrl(oldBookUrl, newBookUrl)
+        replaceReadRecordDetailBookUrl(oldBookUrl, newBookUrl)
+        replaceReadRecordSessionBookUrl(oldBookUrl, newBookUrl)
+    }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(vararg readRecord: ReadRecord)

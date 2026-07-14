@@ -18,6 +18,7 @@ import io.legado.app.data.repository.BackupRestoreRepository
 import io.legado.app.data.repository.BookCacheCleanupRepository
 import io.legado.app.data.repository.BookDomainRepositoryImpl
 import io.legado.app.data.repository.BookGroupRepository
+import io.legado.app.data.repository.BookPrivacyRepository
 import io.legado.app.data.repository.BookRepository
 import io.legado.app.data.repository.BookSourceCallbackRepository
 import io.legado.app.data.repository.BookSourceRepository
@@ -179,8 +180,11 @@ val appModule = module {
     single { get<AppDatabase>().bookGroupDao }
     single { get<AppDatabase>().bookSourceDao }
 
+    singleOf(::BookPrivacyRepository)
     singleOf(::ReadRecordRepository)
-    single<HomeDashboardGateway> { HomeDashboardRepository(get(), get()) }
+    single<HomeDashboardGateway> {
+        HomeDashboardRepository(get(), get(), get(), get())
+    }
     singleOf(::BookRepository)
     singleOf(::BookGroupRepository)
     singleOf(::BookSourceRepository)
@@ -230,7 +234,9 @@ val appModule = module {
     single<AiChatGateway> { AiChatRepository(get()) }
     single<AiMemoryGateway> { AiMemoryRepository(get()) }
     single<AiTextGateway> { AiTextRepositoryImpl() }
-    single<AiToolGateway> { AiToolRepository(get(), get(), get(), get(), get(), get()) }
+    single<AiToolGateway> {
+        AiToolRepository(get(), get(), get(), get(), get(), get(), get())
+    }
     single<AppStartupGateway> { AppStartupRepository(get()) }
     single<BackupRestoreGateway> { BackupRestoreRepository() }
     single<BookCacheDownloadGateway> { CacheBookDownloadRepository(get()) }

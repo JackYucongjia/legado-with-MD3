@@ -8,29 +8,45 @@ import io.legado.app.data.entities.BookChapter
 import io.legado.app.ui.main.bookshelf.BookShelfItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 class BookRepository(
     private val bookDao: BookDao,
-    private val bookChapterDao: BookChapterDao
+    private val bookChapterDao: BookChapterDao,
+    private val bookPrivacyRepository: BookPrivacyRepository,
 ) {
     fun getAllBooks(): Flow<List<Book>> {
         return bookDao.flowAll()
     }
 
-    suspend fun getBookCoverByNameAndAuthor(bookName: String, bookAuthor: String): String? {
-        return withContext(Dispatchers.IO) {
-            bookDao.getBook(bookName, bookAuthor)?.getDisplayCover()
+    fun getVisibleBooks(): Flow<List<Book>> {
+        return combine(bookDao.flowAll(), bookPrivacyRepository.observe()) { books, privacyState ->
+            books.filter {
+                privacyState.isReadRecordVisible(it.bookUrl, it.name, it.author)
+            }
         }
     }
 
-    suspend fun getChapterTitle(bookName: String, bookAuthor: String, chapterIndex: Int): String? {
-        return withContext(Dispatchers.IO) {
-            val book = bookDao.getBook(bookName, bookAuthor)
-            val bookUrl = book?.bookUrl
-            if (bookUrl.isNullOrEmpty()) return@withContext null
+    suspend fun getBookCoverByNameAndAuthor(bookName: String, bookAuthor: String): String? {
+        return getVisibleBook(bookName, bookAuthor)?.getDisplayCover()
+    }
 
+    suspend fun getChapterTitle(bookName: String, bookAuthor: String, chapterIndex: Int): String? {
+        val bookUrl = getVisibleBook(bookName, bookAuthor)?.bookUrl ?: return null
+        return withContext(Dispatchers.IO) {
             bookChapterDao.getChapterTitleByUrlAndIndex(bookUrl, chapterIndex)
+        }
+    }
+
+    suspend fun getVisibleBook(name: String, author: String): Book? {
+        return withContext(Dispatchers.IO) {
+            val privacyState = bookPrivacyRepository.observe().first()
+            bookDao.getBooks(name, author).firstOrNull {
+                privacyState.isReadRecordVisible(it.bookUrl, it.name, it.author)
+            }
         }
     }
 
@@ -48,6 +64,12 @@ class BookRepository(
 
     fun flowBookShelfByGroup(groupId: Long): Flow<List<BookShelfItem>> {
         return bookDao.flowBookShelfByGroup(groupId)
+    }
+
+    fun flowBookShelfIncludingPrivate(): Flow<List<BookShelfItem>> {
+        return bookDao.flowBookShelfIncludingPrivate().map { books ->
+            books.filterNot { it.isNotShelf }
+        }
     }
 
     fun flowSystemGroupCounts(): Flow<List<GroupBookCount>> {

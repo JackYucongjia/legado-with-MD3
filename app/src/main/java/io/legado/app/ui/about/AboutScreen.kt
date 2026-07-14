@@ -55,7 +55,7 @@ fun AboutScreen(
     state: AboutUiState,
     onIntent: (AboutIntent) -> Unit,
     onBack: () -> Unit = {},
-    versionName: String = appInfo.versionName,
+    versionName: String = "${appInfo.versionName} (${appInfo.versionCode})",
 ) {
     if (ThemeResolver.isMiuixEngine(LegadoTheme.composeEngine)) {
         MiuixAboutScreen(
@@ -145,13 +145,13 @@ private fun MaterialAboutScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
-                FilledTonalIconButton(onClick = { onIntent(AboutIntent.OpenUrl("https://github.com/HapeLee/legado-with-MD3")) }) {
+                FilledTonalIconButton(onClick = { onIntent(AboutIntent.OpenUrl("https://gitea.yamby.cn/yusheng/QieKan-3.0")) }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_web_outline),
                         contentDescription = stringResource(R.string.back)
                     )
                 }
-                FilledTonalIconButton(onClick = { onIntent(AboutIntent.OpenUrl("https://github.com/HapeLee/legado-with-MD3")) }) {
+                FilledTonalIconButton(onClick = { onIntent(AboutIntent.OpenUrl("https://gitea.yamby.cn/yusheng/QieKan-3.0")) }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_github),
                         contentDescription = stringResource(R.string.back)
@@ -172,7 +172,7 @@ private fun MaterialAboutScreen(
                 SettingItemWithDivider {
                     SettingItem(
                         title = stringResource(R.string.contributors),
-                        onClick = { onIntent(AboutIntent.OpenUrl("https://github.com/HapeLee/legado-with-MD3")) }
+                        onClick = { onIntent(AboutIntent.OpenUrl("https://gitea.yamby.cn/yusheng/QieKan-3.0")) }
                     )
                 }
                 SettingItemWithDivider {

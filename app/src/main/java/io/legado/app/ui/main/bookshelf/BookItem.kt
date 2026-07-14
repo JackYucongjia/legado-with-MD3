@@ -55,6 +55,7 @@ import io.legado.app.ui.widget.components.icon.AppIcon
 import io.legado.app.ui.widget.components.image.cover.BookshelfCover
 import io.legado.app.ui.widget.components.image.cover.CoilBookCover
 import io.legado.app.ui.widget.components.text.AppText
+import io.legado.app.ui.widget.components.text.hiddenAttributeUnderline
 import io.legado.app.utils.toTimeAgo
 
 /**
@@ -83,6 +84,7 @@ fun BookshelfItem(
     titleMaxLines: Int = 2,
     coverShadow: Boolean = false,
     titleColor: Color? = null,
+    titleHidden: Boolean = false,
     descAnnotated: AnnotatedString? = null,
     coverWidth: Int = 84,
     onClick: () -> Unit,
@@ -151,6 +153,7 @@ fun BookshelfItem(
                             modifier = Modifier
                                 .align(Alignment.BottomStart)
                                 .fillMaxWidth()
+                                .hiddenAttributeUnderline(titleHidden, Color.White)
                                 .background(
                                     Brush.verticalGradient(
                                         colors = listOf(
@@ -173,6 +176,10 @@ fun BookshelfItem(
                         textAlign = if (titleCenter) TextAlign.Center else TextAlign.Start,
                         modifier = Modifier
                             .fillMaxWidth()
+                            .hiddenAttributeUnderline(
+                                titleHidden,
+                                LegadoTheme.colorScheme.onSurfaceVariant
+                            )
                             .padding(start = 4.dp, end = 4.dp, bottom = 4.dp)
                     )
                 }
@@ -237,7 +244,12 @@ fun BookshelfItem(
                             },
                             maxLines = BookshelfConfig.bookshelfTitleMaxLines,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier
+                                .weight(1f)
+                                .hiddenAttributeUnderline(
+                                    titleHidden,
+                                    LegadoTheme.colorScheme.onSurfaceVariant
+                                )
                         )
                         titleEnd?.let {
                             Box(modifier = Modifier.padding(top = 4.dp, start = 4.dp)) {
@@ -436,6 +448,7 @@ fun BookGroupItemGrid(
             )
         },
         title = group.groupName,
+        titleHidden = group.isPrivate,
         modifier = modifier,
         titleSmallFont = titleSmallFont,
         titleCenter = titleCenter,
@@ -491,6 +504,7 @@ fun BookGroupItemList(
         isCompact = BookshelfConfig.bookshelfGroupListStyle == 1 || isCompact,
         cover = { BookGroupCover(books = previewBooks, coverPath = group.cover, modifier = it) },
         title = group.groupName,
+        titleHidden = group.isPrivate,
         subTitle = countText,
         descAnnotated = descAnnotated,
         titleSmallFont = titleSmallFont,
@@ -549,6 +563,10 @@ fun BookGroupItemHorizontalCovers(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
+                            .hiddenAttributeUnderline(
+                                group.isPrivate,
+                                LegadoTheme.colorScheme.onSurfaceVariant
+                            )
                     )
                     if (countText != null) {
                         AppText(
@@ -689,6 +707,7 @@ fun BookItem(
             )
         },
         title = book.name,
+        titleHidden = bookUi.isHidden,
         subTitle = if (layoutMode == 0 && isCompact) {
             stringResource(R.string.author_read, book.author, unreadCount)
         } else {

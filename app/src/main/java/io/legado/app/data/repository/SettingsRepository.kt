@@ -27,6 +27,17 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
     }
 )
 
+internal fun normalizeLegacyPreferenceValue(key: String, value: Any): Any =
+    when {
+        key == PreferKey.showBrightnessView && value is Boolean -> if (value) "1" else "0"
+        else -> value
+    }
+
+internal fun Preferences.getStringCompat(key: String, defaultValue: String): String {
+    val value = asMap().entries.firstOrNull { it.key.name == key }?.value ?: return defaultValue
+    return normalizeLegacyPreferenceValue(key, value) as? String ?: defaultValue
+}
+
 /**
  * 设置仓储
  * 以 DataStore 为唯一写入源，读取以 DataStore 为准。
@@ -110,15 +121,15 @@ class SettingsRepository(private val context: Context) {
     suspend fun batchPutFromMap(map: Map<String, *>) {
         dataStore.edit { preferences ->
             map.forEach { (key, value) ->
-                when (value) {
-                    is String -> preferences[stringPreferencesKey(key)] = value
-                    is Int -> preferences[intPreferencesKey(key)] = value
-                    is Boolean -> preferences[booleanPreferencesKey(key)] = value
-                    is Long -> preferences[longPreferencesKey(key)] = value
-                    is Float -> preferences[floatPreferencesKey(key)] = value
+                when (val normalizedValue = value?.let { normalizeLegacyPreferenceValue(key, it) }) {
+                    is String -> preferences[stringPreferencesKey(key)] = normalizedValue
+                    is Int -> preferences[intPreferencesKey(key)] = normalizedValue
+                    is Boolean -> preferences[booleanPreferencesKey(key)] = normalizedValue
+                    is Long -> preferences[longPreferencesKey(key)] = normalizedValue
+                    is Float -> preferences[floatPreferencesKey(key)] = normalizedValue
                     is Set<*> -> {
                         @Suppress("UNCHECKED_CAST")
-                        preferences[stringSetPreferencesKey(key)] = value as Set<String>
+                        preferences[stringSetPreferencesKey(key)] = normalizedValue as Set<String>
                     }
                 }
             }

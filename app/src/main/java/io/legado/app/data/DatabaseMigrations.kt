@@ -496,4 +496,35 @@ object DatabaseMigrations {
         columnName = "enabledReview"
     )
     class Migration_64_65 : AutoMigrationSpec
+
+    @Suppress("ClassName")
+    class Migration_93_94 : AutoMigrationSpec {
+
+        override fun onPostMigrate(db: SupportSQLiteDatabase) {
+            backfillBookUrl(db, "readRecord")
+            backfillBookUrl(db, "readRecordDetail")
+            backfillBookUrl(db, "readRecordSession")
+        }
+
+        private fun backfillBookUrl(db: SupportSQLiteDatabase, tableName: String) {
+            db.execSQL(
+                """
+                UPDATE `$tableName`
+                SET bookUrl = (
+                    SELECT MIN(book.bookUrl)
+                    FROM books AS book
+                    WHERE TRIM(book.name) = TRIM(`$tableName`.bookName)
+                        AND (`$tableName`.bookAuthor = '' OR book.author = `$tableName`.bookAuthor)
+                )
+                WHERE bookUrl IS NULL
+                    AND 1 = (
+                        SELECT COUNT(*)
+                        FROM books AS book
+                        WHERE TRIM(book.name) = TRIM(`$tableName`.bookName)
+                            AND (`$tableName`.bookAuthor = '' OR book.author = `$tableName`.bookAuthor)
+                    )
+                """.trimIndent()
+            )
+        }
+    }
 }
