@@ -18,6 +18,7 @@ import io.legado.app.model.remote.RemoteBook
 import io.legado.app.model.remote.RemoteBookWebDav
 import io.legado.app.utils.isContentScheme
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class RemoteBookRepository(
     private val appDb: AppDatabase
@@ -126,7 +127,9 @@ class RemoteBookRepository(
     }
 
     fun flowServers(): Flow<List<Server>> {
-        return appDb.serverDao.observeAll()
+        return appDb.serverDao.observeAll().map { servers ->
+            servers.filter { it.type == Server.TYPE.WEBDAV }
+        }
     }
 
     suspend fun getServer(id: Long): Server? {

@@ -1,8 +1,8 @@
 # Legado with MD3
 
 <p align="left">
-  <a href="https://github.com/HapeLee/legado-with-MD3">简体中文</a> ｜ 
-  <a href="https://github.com/HapeLee/legado-with-MD3/blob/main/English.md">English</a>
+  <a href="https://gitea.yamby.cn/yusheng/QieKan-3.0">简体中文</a> ｜
+  <a href="https://gitea.yamby.cn/yusheng/QieKan-3.0/src/branch/main/English.md">English</a>
 </p>
 
 ---

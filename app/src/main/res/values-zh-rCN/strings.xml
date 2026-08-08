@@ -235,6 +235,7 @@
     <string name="paste_source">粘贴源</string>
     <string name="source_rule_s">源规则说明</string>
     <string name="check_update">检查更新</string>
+    <string name="already_latest_version">当前已是最新版本</string>
     <string name="camera_scan">扫描二维码</string>
     <string name="scan_image">扫描本地图片</string>
     <string name="rule_summary">规则说明</string>
@@ -876,7 +877,7 @@
     <string name="alipay_red_envelope_qr_code">支付宝红包二维码</string>
     <string name="alipay_payment_qr_code">支付宝收款二维码</string>
     <string name="qq_collection_qr_code">QQ 收款二维码</string>
-    <string name="contributors_summary">gedoor、Invinciblelee 和 Xwite 等，详情请在 GitHub 中查看</string>
+    <string name="contributors_summary">gedoor、Invinciblelee 和 Xwite 等，详情请在 Gitea 项目中查看</string>
     <string name="clear_cache_summary">清除已下载书籍和字体缓存</string>
     <string name="default_cover">默认封面</string>
     <string name="restore_ignore">恢复忽略列表</string>
@@ -1306,6 +1307,10 @@
     <string name="set_local_password_summary">本地密码用来对备份的敏感信息加密和解密，如需在不同设备之间同步，本地密码需一致。</string>
     <string name="only_latest_backup_t">仅保留最新备份</string>
     <string name="only_latest_backup_s">本地备份仅保留最新备份文件</string>
+    <string name="backup_fonts_t">备份自定义字体</string>
+    <string name="backup_fonts_s">将阅读设置中使用的自定义字体一并备份，恢复时自动还原</string>
+    <string name="backup_local_books_t">备份本地书籍</string>
+    <string name="backup_local_books_s">将本地书籍文件一并备份，恢复时自动导入到书籍保存目录</string>
     <string name="webdav_application_authorization_error">WebDav 应用验证失败</string>
     <string name="load_word_count">加载字数</string>
     <string name="replace_exclude_scope">排除范围，选填书名或者书源 URL</string>
@@ -2245,4 +2250,28 @@
     <string name="cover_album_imported_name">%1$s（导入）</string>
     <string name="cover_album_day_night_count">日间 %1$d · 夜间 %2$d</string>
     <string name="cover_album_selected">当前使用</string>
+    <string name="audiobookshelf_title">有声书</string>
+    <string name="audiobookshelf_entry_description">连接 Audiobookshelf 服务</string>
+    <string name="audiobookshelf_server_section">服务器</string>
+    <string name="audiobookshelf_library_section">媒体库</string>
+    <string name="audiobookshelf_actions_section">连接管理</string>
+    <string name="audiobookshelf_server_name">服务器名称</string>
+    <string name="audiobookshelf_server_url">服务器地址</string>
+    <string name="audiobookshelf_server_url_example">https://example.com/audiobookshelf</string>
+    <string name="audiobookshelf_username">用户名</string>
+    <string name="audiobookshelf_password">密码</string>
+    <string name="audiobookshelf_connect">连接并登录</string>
+    <string name="audiobookshelf_reconnect">重新登录</string>
+    <string name="audiobookshelf_refresh">刷新</string>
+    <string name="audiobookshelf_edit_connection">修改连接</string>
+    <string name="audiobookshelf_server_version">服务端版本：%1$s</string>
+    <string name="audiobookshelf_http_warning">HTTP 连接不会加密账号令牌，请仅在可信局域网中使用。</string>
+    <string name="audiobookshelf_no_libraries">没有可访问的媒体库</string>
+    <string name="audiobookshelf_no_libraries_desc">请检查该账号在服务端的媒体库权限。</string>
+    <string name="audiobookshelf_library_books">有声书媒体库</string>
+    <string name="audiobookshelf_library_podcasts">播客媒体库</string>
+    <string name="audiobookshelf_forget_title">移除这个服务器？</string>
+    <string name="audiobookshelf_forget_message">本地连接配置和加密刷新令牌将被删除，服务端数据不会受到影响。</string>
+    <string name="audiobookshelf_forget_confirm">移除服务器</string>
+    <string name="audiobookshelf_cancel">取消</string>
 </resources>

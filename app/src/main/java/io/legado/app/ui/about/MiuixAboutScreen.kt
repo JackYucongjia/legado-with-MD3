@@ -184,6 +184,7 @@ private fun AboutContent(
     val privacyPolicyTitle = stringResource(R.string.about_privacy_policy_title)
     val licenseTitle = stringResource(R.string.about_license_title)
     val disclaimerTitle = stringResource(R.string.about_disclaimer_title)
+    val giteaUrl = stringResource(R.string.gitea_url)
 
     val backdrop = rememberBlurBackdrop()
     var blurRadius by remember { mutableFloatStateOf(60f) }
@@ -393,9 +394,9 @@ private fun AboutContent(
                         ArrowPreference(
                             title = stringResource(R.string.contributors),
                             endActions = {
-                                ValueText("GitHub")
+                                ValueText(stringResource(R.string.gitea))
                             },
-                            onClick = { onIntent(AboutIntent.OpenUrl("https://gitea.yamby.cn/yusheng/QieKan-3.0")) },
+                            onClick = { onIntent(AboutIntent.OpenUrl(giteaUrl)) },
                         )
                     }
 

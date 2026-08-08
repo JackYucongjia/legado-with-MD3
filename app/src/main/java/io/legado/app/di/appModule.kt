@@ -5,6 +5,9 @@ import coil.ImageLoader
 import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
 import coil.decode.SvgDecoder
+import io.legado.audiobookshelf.client.AudiobookshelfApi
+import io.legado.app.data.audiobook.AudiobookRepository
+import io.legado.app.data.audiobook.AudiobookTokenStore
 import io.legado.app.data.AppDatabase
 import io.legado.app.data.local.preferences.LocalPreferencesRepository
 import io.legado.app.data.repository.AiArtifactRepository
@@ -56,6 +59,7 @@ import io.legado.app.domain.gateway.AiMemoryGateway
 import io.legado.app.domain.gateway.AiProfileGateway
 import io.legado.app.domain.gateway.AiTextGateway
 import io.legado.app.domain.gateway.AiToolGateway
+import io.legado.app.domain.gateway.AudiobookGateway
 import io.legado.app.domain.gateway.AppStartupGateway
 import io.legado.app.domain.gateway.BackupRestoreGateway
 import io.legado.app.domain.gateway.BookCacheCleanupGateway
@@ -111,6 +115,7 @@ import io.legado.app.help.http.okHttpClient
 import io.legado.app.help.http.okHttpClientManga
 import io.legado.app.ui.about.AboutViewModel
 import io.legado.app.ui.ai.chat.AiChatViewModel
+import io.legado.app.ui.audiobook.AudiobookViewModel
 import io.legado.app.ui.book.bookmark.AllBookmarkViewModel
 import io.legado.app.ui.book.cache.manage.BookCacheManageViewModel
 import io.legado.app.ui.book.changecover.ChangeCoverViewModel
@@ -227,6 +232,10 @@ val appModule = module {
     singleOf(::BookshelfManageScreenConfig)
     singleOf(::ThemePackageManager)
 
+    single { AudiobookshelfApi() }
+    single { AudiobookTokenStore(get()) }
+    single<AudiobookGateway> { AudiobookRepository(get(), get(), get()) }
+
     single<UploadRepository> { DirectLinkUploadRepository() }
     single<TranslationCacheGateway> { TranslationCacheRepositoryImpl() }
     single<AiProfileGateway> { AiProfileRepository(get()) }
@@ -315,6 +324,7 @@ val appModule = module {
     viewModelOf(::BackupConfigViewModel)
     viewModelOf(::AiConfigViewModel)
     viewModelOf(::AiChatViewModel)
+    viewModelOf(::AudiobookViewModel)
     viewModel { (providerId: String?) ->
         AiProviderEditViewModel(
             initialProviderId = providerId,

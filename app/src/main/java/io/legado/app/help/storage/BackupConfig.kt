@@ -79,10 +79,14 @@ object BackupConfig {
         PreferKey.clickActionMR,
         PreferKey.clickActionBL,
         PreferKey.clickActionBC,
-        PreferKey.clickActionBR
+        PreferKey.clickActionBR,
+        PreferKey.highlightRuleDialog,
+        PreferKey.highlightRuleBookTitle,
+        PreferKey.highlightRuleBracketNote
     )
 
     private val themePrefKeys = arrayOf(
+        PreferKey.appFontPath,
         PreferKey.cPrimary,
         PreferKey.cNPrimary,
         PreferKey.bgImage,

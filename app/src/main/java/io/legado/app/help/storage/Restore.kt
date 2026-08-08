@@ -28,9 +28,11 @@ import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.data.entities.readRecord.ReadRecordDetail
 import io.legado.app.data.entities.readRecord.ReadRecordSession
+import io.legado.app.data.repository.HighlightRuleRepository
 import io.legado.app.data.repository.SettingsRepository
 import io.legado.app.help.DirectLinkUpload
 import io.legado.app.help.LauncherIconHelp
+import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.upType
 import io.legado.app.help.config.LocalConfig
@@ -38,12 +40,18 @@ import io.legado.app.help.config.ThemeConfigStore
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.model.BookCover
 import io.legado.app.model.localBook.LocalBook
+import io.legado.app.ui.config.otherConfig.OtherConfig
+import io.legado.app.ui.config.themeConfig.ThemeConfig
 import io.legado.app.utils.ACache
+import io.legado.app.utils.FileDoc
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.LogUtils
 import io.legado.app.utils.compress.ZipUtils
 import io.legado.app.utils.defaultSharedPreferences
+import io.legado.app.utils.externalFiles
+import io.legado.app.utils.fromJsonObject
+import io.legado.app.utils.getFile
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.isContentScheme
@@ -341,14 +349,42 @@ object Restore : KoinComponent {
         }
         // 恢复配置文件 (手动解析 XML，替代反射逻辑)
         val configFile = File(path, "config.xml")
+        var restoredConfigMap: Map<String, Any?> = emptyMap()
         if (configFile.exists()) {
             try {
-                val map = readXmlToMap(configFile)
-                if (map.isNotEmpty()) {
-                    applyConfigMap(map, aes)
+                restoredConfigMap = readXmlToMap(configFile)
+                if (restoredConfigMap.isNotEmpty()) {
+                    applyConfigMap(restoredConfigMap, aes)
                 }
             } catch (e: Exception) {
                 AppLog.put("恢复配置 XML 出错\n${e.localizedMessage}", e)
+            }
+        }
+
+        if (!BackupConfig.ignoreReadConfig) {
+            kotlin.runCatching {
+                restoreHighlightRules(File(path, HighlightRuleRepository.backupFileName))
+            }.onFailure {
+                AppLog.put("恢复高亮规则出错\n${it.localizedMessage}", it)
+            }
+        }
+        //恢复自定义字体
+        kotlin.runCatching {
+            restoreFonts(
+                fontsDir = File(path, Backup.fontsDirName),
+                restoreReadFonts = !BackupConfig.ignoreReadConfig,
+                restoreThemeFont = !BackupConfig.ignoreThemeConfig,
+                backedAppFontPath = restoredConfigMap[PreferKey.appFontPath] as? String,
+            )
+        }.onFailure {
+            AppLog.put("恢复自定义字体出错\n${it.localizedMessage}", it)
+        }
+        //恢复本地书籍文件
+        if (!BackupConfig.ignoreLocalBook) {
+            kotlin.runCatching {
+                restoreLocalBooks(File(path, Backup.localBooksDirName))
+            }.onFailure {
+                AppLog.put("恢复本地书籍出错\n${it.localizedMessage}", it)
             }
         }
 
@@ -359,6 +395,160 @@ object Restore : KoinComponent {
                 LauncherIconHelp.changeIcon(appCtx.getPrefString(PreferKey.launcherIcon))
             }
             ThemeConfigStore.applyDayNight(appCtx)
+        }
+    }
+
+    /**
+     * 恢复高亮规则及其开关配置。旧备份没有该文件时直接跳过。
+     */
+    private fun restoreHighlightRules(file: File) {
+        if (!file.exists()) return
+        val backupData = GSON.fromJsonObject<HighlightRuleRepository.BackupData>(
+            file.readText()
+        ).getOrNull() ?: return
+        appDb.highlightRuleDao.replaceAll(backupData.rules)
+        appCtx.defaultSharedPreferences.edit {
+            putBoolean(PreferKey.highlightRuleDialog, backupData.dialogEnabled)
+            putBoolean(PreferKey.highlightRuleBookTitle, backupData.bookTitleEnabled)
+            putBoolean(PreferKey.highlightRuleBracketNote, backupData.bracketNoteEnabled)
+        }
+    }
+
+    /**
+     * 恢复自定义字体文件, 并按映射重写排版配置中的字体路径。
+     * 阅读配置和主题配置分别遵守恢复忽略项，避免只恢复资源却修改了被忽略的配置。
+     */
+    private fun restoreFonts(
+        fontsDir: File,
+        restoreReadFonts: Boolean,
+        restoreThemeFont: Boolean,
+        backedAppFontPath: String?,
+    ) {
+        if (!fontsDir.exists() || (!restoreReadFonts && !restoreThemeFont)) return
+        val targetFontDir = appCtx.externalFiles.getFile("font")
+        targetFontDir.mkdirs()
+        fontsDir.listFiles()?.forEach { fontFile ->
+            if (fontFile.isFile && fontFile.name != Backup.fontMapFileName) {
+                // 用户已选择恢复字体，备份内容应覆盖目标设备同名旧字体。
+                fontFile.copyTo(targetFontDir.getFile(fontFile.name), overwrite = true)
+            }
+        }
+        //原始字体路径到备份文件名的映射
+        val fontMap = File(fontsDir, Backup.fontMapFileName)
+            .takeIf { it.exists() }
+            ?.runCatching {
+                GSON.fromJsonObject<Map<String, String>>(readText()).getOrNull()
+            }?.getOrNull().orEmpty()
+
+        fun rewriteFont(fontPath: String?): String? {
+            if (fontPath.isNullOrBlank()) return fontPath
+            val fileName = fontMap[fontPath] ?: File(fontPath).name
+            if (fileName.isBlank()) return fontPath
+            val newFont = targetFontDir.getFile(fileName)
+            return if (newFont.exists()) newFont.absolutePath else fontPath
+        }
+
+        var changed = false
+        fun rewriteConfig(config: ReadBookConfig.Config) {
+            rewriteFont(config.textFont)?.let {
+                if (it != config.textFont) { config.textFont = it; changed = true }
+            }
+            rewriteFont(config.titleFont)?.let {
+                if (it != config.titleFont) { config.titleFont = it; changed = true }
+            }
+            rewriteFont(config.headerFont)?.let {
+                if (it != config.headerFont) { config.headerFont = it; changed = true }
+            }
+            rewriteFont(config.footerFont)?.let {
+                if (it != config.footerFont) { config.footerFont = it; changed = true }
+            }
+            config.highlightRules.forEach { rule ->
+                val newFontPath = rewriteFont(rule.fontPath)
+                if (newFontPath != rule.fontPath) { rule.fontPath = newFontPath; changed = true }
+            }
+        }
+        if (restoreReadFonts) {
+            ReadBookConfig.configList.forEach(::rewriteConfig)
+            rewriteConfig(ReadBookConfig.shareConfig)
+            // 高亮规则当前单独存储在 Room 中，不只存在于 ReadBookConfig JSON。
+            appDb.highlightRuleDao.getAll().forEach { rule ->
+                val newFontPath = rewriteFont(rule.fontPath)
+                if (newFontPath != rule.fontPath) {
+                    appDb.highlightRuleDao.update(rule.copy(fontPath = newFontPath))
+                }
+            }
+        }
+        if (restoreThemeFont) {
+            // 直接使用备份 XML 中的值，避免 DataStore observer 尚未刷新时读取到旧 appFontPath。
+            val sourceAppFontPath = backedAppFontPath ?: ThemeConfig.appFontPath
+            val newAppFontPath = rewriteFont(sourceAppFontPath)
+            if (newAppFontPath != ThemeConfig.appFontPath) {
+                ThemeConfig.appFontPath = newAppFontPath
+            }
+        }
+        if (changed) {
+            ReadBookConfig.save()
+        }
+    }
+
+    /**
+     * 恢复本地书籍文件到书籍保存目录，并立即重绑书架及阅读记录中的 bookUrl。
+     * 新版备份使用 localBooks.json 映射；没有映射的旧备份仍按原文件名兼容恢复。
+     */
+    private suspend fun restoreLocalBooks(localBooksDir: File) {
+        if (!localBooksDir.exists()) return
+        val defaultBookTreeUri = OtherConfig.defaultBookTreeUri
+        if (defaultBookTreeUri.isNullOrBlank()) {
+            appCtx.toastOnUi(R.string.no_books_dir)
+            return
+        }
+
+        val bookMap = File(localBooksDir, Backup.localBooksMapFileName)
+            .takeIf { it.exists() }
+            ?.runCatching {
+                GSON.fromJsonObject<Map<String, String>>(readText()).getOrNull()
+            }?.getOrNull().orEmpty()
+        val entries = if (bookMap.isNotEmpty()) {
+            bookMap.entries.map { it.key to it.value }
+        } else {
+            localBooksDir.listFiles()
+                ?.filter { it.isFile && it.name != Backup.localBooksMapFileName }
+                ?.map { null to it.name }
+                .orEmpty()
+        }
+        if (entries.isEmpty()) return
+
+        var restored = 0
+        entries.forEach { (oldBookUrl, fileName) ->
+            val bookFile = File(localBooksDir, fileName)
+            if (!bookFile.isFile) return@forEach
+            kotlin.runCatching {
+                val restoredUri = FileInputStream(bookFile).use { input ->
+                    // 使用备份目录中的唯一文件名，避免目标目录中存在同名旧书时串书。
+                    LocalBook.saveBookFile(input, fileName)
+                }
+                val newBookUrl = FileDoc.fromUri(restoredUri, false).toString()
+                if (!oldBookUrl.isNullOrBlank() && oldBookUrl != newBookUrl) {
+                    rebindRestoredBook(oldBookUrl, newBookUrl)
+                }
+                restored++
+            }.onFailure {
+                AppLog.put("恢复本地书籍 ${bookFile.name} 出错\n${it.localizedMessage}", it)
+            }
+        }
+        LogUtils.d(TAG, "恢复本地书籍 $restored 本")
+    }
+
+    private fun rebindRestoredBook(oldBookUrl: String, newBookUrl: String) {
+        val oldBook = appDb.bookDao.getBook(oldBookUrl) ?: return
+        val newBook = oldBook.copy(
+            bookUrl = newBookUrl,
+            coverUrl = LocalBook.getCoverPath(oldBook.copy(bookUrl = newBookUrl))
+        )
+        appDb.runInTransaction {
+            appDb.bookDao.replace(oldBook, newBook)
+            BookHelp.updateCacheFolder(oldBook, newBook)
+            appDb.readRecordDao.replaceBookUrl(oldBookUrl, newBookUrl)
         }
     }
 

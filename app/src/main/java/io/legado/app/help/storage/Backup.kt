@@ -15,18 +15,26 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.config.ThemeConfigStore
 import io.legado.app.help.config.ReadBookConfig
+import io.legado.app.help.book.isLocal
 import io.legado.app.help.coroutine.Coroutine
+import io.legado.app.data.repository.HighlightRuleRepository
 import io.legado.app.model.BookCover
+import io.legado.app.model.localBook.LocalBook
+import io.legado.app.ui.config.themeConfig.ThemeConfig
+import io.legado.app.utils.FileDoc
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.LogUtils
+import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.compress.ZipUtils
 import io.legado.app.utils.createFolderIfNotExist
+import io.legado.app.utils.defaultSharedPreferences
 import io.legado.app.data.repository.dataStore
 import io.legado.app.utils.externalFiles
 import kotlinx.coroutines.flow.first
 import io.legado.app.utils.getFile
 import io.legado.app.utils.isContentScheme
+import io.legado.app.utils.inputStream
 import io.legado.app.utils.normalizeFileName
 import io.legado.app.utils.openOutputStream
 import io.legado.app.utils.outputStream
@@ -56,6 +64,11 @@ object Backup {
 
     private const val TAG = "Backup"
 
+    const val fontsDirName = "fonts"
+    const val localBooksDirName = "localBooks"
+    const val fontMapFileName = "fonts.json"
+    const val localBooksMapFileName = "localBooks.json"
+
     private val backupFileNames by lazy {
         arrayOf(
             "bookshelf.json",
@@ -65,6 +78,7 @@ object Backup {
             "rssSources.json",
             "rssStar.json",
             "replaceRule.json",
+            HighlightRuleRepository.backupFileName,
             "readRecord.json",
             "readRecordDetail.json",
             "readRecordSession.json",
@@ -132,6 +146,14 @@ object Backup {
         LocalConfig.lastBackup = System.currentTimeMillis()
         val aes = BackupAES()
         FileUtils.delete(backupPath)
+        //打包自定义字体与本地书籍(在写入书架前执行,本地书籍查找会同步更新书架中的路径)
+        val extraBackupPaths = arrayListOf<String>()
+        if (AppConfig.backupFonts) {
+            backupFontsTo(File(backupPath))?.let { extraBackupPaths.add(it) }
+        }
+        if (AppConfig.backupLocalBooks) {
+            backupLocalBooksTo(File(backupPath))?.let { extraBackupPaths.add(it) }
+        }
         writeListToJson(appDb.bookDao.all, "bookshelf.json", backupPath)
         writeListToJson(appDb.bookmarkDao.all, "bookmark.json", backupPath)
         writeListToJson(appDb.bookGroupDao.all, "bookGroup.json", backupPath)
@@ -139,6 +161,24 @@ object Backup {
         writeListToJson(appDb.rssSourceDao.all, "rssSources.json", backupPath)
         writeListToJson(appDb.rssStarDao.all, "rssStar.json", backupPath)
         writeListToJson(appDb.replaceRuleDao.all, "replaceRule.json", backupPath)
+        val highlightRuleBackup = HighlightRuleRepository.BackupData(
+            rules = appDb.highlightRuleDao.getAll(),
+            dialogEnabled = appCtx.defaultSharedPreferences.getBoolean(
+                PreferKey.highlightRuleDialog,
+                true
+            ),
+            bookTitleEnabled = appCtx.defaultSharedPreferences.getBoolean(
+                PreferKey.highlightRuleBookTitle,
+                true
+            ),
+            bracketNoteEnabled = appCtx.defaultSharedPreferences.getBoolean(
+                PreferKey.highlightRuleBracketNote,
+                true
+            )
+        )
+        FileUtils.createFileIfNotExist(
+            backupPath + File.separator + HighlightRuleRepository.backupFileName
+        ).writeText(GSON.toJson(highlightRuleBackup))
         writeListToJson(appDb.readRecordDao.all, "readRecord.json", backupPath)
         writeListToJson(appDb.readRecordDao.allDetail, "readRecordDetail.json", backupPath)
         writeListToJson(appDb.readRecordDao.allSession, "readRecordSession.json", backupPath)
@@ -209,6 +249,7 @@ object Backup {
         for (i in 0 until paths.size) {
             paths[i] = backupPath + File.separator + paths[i]
         }
+        paths.addAll(extraBackupPaths)
         FileUtils.delete(zipFilePath)
         FileUtils.delete(zipFilePath.replace("tmp_", ""))
         val backupFileName = if (AppConfig.onlyLatestBackup) {
@@ -268,6 +309,125 @@ object Backup {
                 LogUtils.d(TAG, "阅读备份 $fileName 列表为空")
             }
         }
+    }
+
+    /**
+     * 备份自定义字体, 返回打包目录路径
+     */
+    private fun backupFontsTo(backupDir: File): String? = kotlin.runCatching {
+        val fontPathSet = hashSetOf<String>()
+        ReadBookConfig.configList.forEach { config ->
+            config.highlightRules.forEach { rule ->
+                rule.fontPath?.takeIf { it.isNotBlank() }?.let(fontPathSet::add)
+            }
+            listOf(config.textFont, config.titleFont, config.headerFont, config.footerFont)
+                .filter { it.isNotBlank() }
+                .forEach(fontPathSet::add)
+        }
+        listOf(
+            ReadBookConfig.shareConfig.textFont,
+            ReadBookConfig.shareConfig.titleFont,
+            ReadBookConfig.shareConfig.headerFont,
+            ReadBookConfig.shareConfig.footerFont
+        ).filter { it.isNotBlank() }.forEach(fontPathSet::add)
+        ReadBookConfig.shareConfig.highlightRules.forEach { rule ->
+            rule.fontPath?.takeIf { it.isNotBlank() }?.let(fontPathSet::add)
+        }
+        appDb.highlightRuleDao.getAll().forEach { rule ->
+            rule.fontPath?.takeIf { it.isNotBlank() }?.let(fontPathSet::add)
+        }
+        ThemeConfig.appFontPath?.takeIf { it.isNotBlank() }?.let(fontPathSet::add)
+
+        val fontsDir = backupDir.getFile(fontsDirName)
+        //原始字体路径到备份文件名的映射, 恢复时用于重写字体路径
+        val fontPathMap = hashMapOf<String, String>()
+        var count = 0
+        var failed = 0
+        fontPathSet.forEach { fontPath ->
+            val sourceUri = fontPath.toUri()
+            val fileName = kotlin.runCatching {
+                FileDoc.fromUri(sourceUri, false).name
+            }.getOrNull()?.takeIf { it.isNotBlank() } ?: return@forEach
+            val target = fontsDir.getFile(uniqueBackupFileName(fileName, fontPath))
+            val copied = kotlin.runCatching {
+                sourceUri.inputStream(appCtx).getOrThrow().use { input ->
+                    fontsDir.mkdirs()
+                    FileOutputStream(target, false).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            }.onFailure {
+                failed++
+                AppLog.put("备份字体 $fileName 出错\n${it.localizedMessage}", it)
+            }.isSuccess
+            if (copied) {
+                count++
+                fontPathMap[fontPath] = target.name
+            }
+        }
+        if (fontPathMap.isEmpty()) return@runCatching null
+        fontsDir.mkdirs()
+        fontsDir.getFile(fontMapFileName).writeText(GSON.toJson(fontPathMap))
+        if (failed > 0) {
+            AppLog.put("备份字体完成，成功 $count 个，跳过 $failed 个")
+        }
+        LogUtils.d(TAG, "备份字体 $count 个，跳过 $failed 个")
+        fontsDir.absolutePath
+    }.getOrElse {
+        AppLog.put("备份字体出错\n${it.localizedMessage}", it)
+        null
+    }
+
+    /**
+     * 备份本地书籍文件, 返回打包目录路径
+     */
+    private fun backupLocalBooksTo(backupDir: File): String? = kotlin.runCatching {
+        val books = appDb.bookDao.all.filter { it.isLocal }
+        if (books.isEmpty()) return@runCatching null
+        val localBooksDir = backupDir.getFile(localBooksDirName)
+        val bookUrlMap = linkedMapOf<String, String>()
+        var count = 0
+        var failed = 0
+        books.forEach { book ->
+            val originalBookUrl = book.bookUrl
+            val originalName = book.originName.ifBlank { book.name }
+            val targetName = uniqueBackupFileName(originalName, originalBookUrl)
+            val copied = kotlin.runCatching {
+                //读取实际书籍内容。对于从压缩包导入的书籍，这里备份解压后的书籍文件，
+                //避免依赖源设备上的压缩包路径，恢复后可直接重绑定。
+                LocalBook.getBookInputStream(book).use { input ->
+                    localBooksDir.mkdirs()
+                    FileOutputStream(localBooksDir.getFile(targetName), false).use { output ->
+                        input.copyTo(output)
+                    }
+                    count++
+                }
+            }.onFailure {
+                failed++
+                AppLog.put("备份本地书籍 ${book.name} 出错\n${it.localizedMessage}", it)
+            }.isSuccess
+            if (copied) {
+                // getBookInputStream 可能触发旧设备路径重绑，使用重绑后的 URL 写入映射。
+                bookUrlMap[book.bookUrl] = targetName
+            }
+        }
+        if (bookUrlMap.isEmpty()) return@runCatching null
+        localBooksDir.getFile(localBooksMapFileName).writeText(GSON.toJson(bookUrlMap))
+        if (failed > 0) {
+            AppLog.put("备份本地书籍完成，成功 $count 本，跳过 $failed 本")
+        }
+        LogUtils.d(TAG, "备份本地书籍 $count 本，跳过 $failed 本")
+        localBooksDir.absolutePath
+    }.getOrElse {
+        AppLog.put("备份本地书籍出错\n${it.localizedMessage}", it)
+        null
+    }
+
+    private fun uniqueBackupFileName(originalName: String, key: String): String {
+        val source = File(originalName)
+        val baseName = source.nameWithoutExtension.ifBlank { "resource" }
+        val extension = source.extension.takeIf { it.isNotBlank() }?.let { ".${it}" }.orEmpty()
+        return "${baseName}_${MD5Utils.md5Encode16(key)}$extension".normalizeFileName()
     }
 
     @Throws(Exception::class)

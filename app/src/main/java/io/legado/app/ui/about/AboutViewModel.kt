@@ -58,7 +58,7 @@ class AboutViewModel(application: Application) : BaseViewModel(application) {
 
     private fun checkUpdate() {
         _uiState.update { it.copy(dialog = AboutDialog.CheckingUpdate) }
-        AppUpdate.gitHubUpdate?.run {
+        AppUpdate.giteaUpdate.run {
             check(viewModelScope)
                 .onSuccess { updateInfo ->
                     _uiState.update {
@@ -69,8 +69,15 @@ class AboutViewModel(application: Application) : BaseViewModel(application) {
                     }
                 }.onError { e ->
                     _uiState.update { it.copy(dialog = null) }
+                    val message = e.localizedMessage.orEmpty()
+                    if (message == context.getString(R.string.already_latest_version)) {
+                        _effects.tryEmit(
+                            AboutEffect.ShowToast(context.getString(R.string.already_latest_version))
+                        )
+                        return@onError
+                    }
                     _effects.tryEmit(
-                        AboutEffect.ShowToast("${context.getString(R.string.check_update)}\n${e.localizedMessage}")
+                        AboutEffect.ShowToast(context.getString(R.string.check_update) + "\n" + message)
                     )
                 }.onFinally {
                     _uiState.update { it.copy(dialog = null) }

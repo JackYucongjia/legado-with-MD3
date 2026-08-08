@@ -55,6 +55,16 @@ object BackupConfig {
         "both"
     )
 
+    var backupFonts by prefDelegate(
+        PreferKey.backupFonts,
+        true
+    )
+
+    var backupLocalBooks by prefDelegate(
+        PreferKey.backupLocalBooks,
+        false
+    )
+
     var backupPath by prefDelegate<String?>(
         PreferKey.backupPath,
         null

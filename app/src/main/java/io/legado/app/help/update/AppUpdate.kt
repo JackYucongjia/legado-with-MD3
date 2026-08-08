@@ -5,8 +5,8 @@ import kotlinx.coroutines.CoroutineScope
 
 object AppUpdate {
 
-    val gitHubUpdate: AppUpdateInterface? by lazy {
-        AppUpdateGitHub
+    val giteaUpdate: AppUpdateInterface by lazy {
+        AppUpdateGitea
     }
 
     data class UpdateInfo(

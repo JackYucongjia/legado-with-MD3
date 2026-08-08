@@ -13,8 +13,8 @@ hero:
       text: 开发文档
       link: /dev/
     - theme: alt
-      text: GitHub
-      link: https://github.com/HapeLee/legado-with-MD3
+      text: Gitea
+      link: https://gitea.yamby.cn/yusheng/QieKan-3.0
 
 features:
   - icon: 📖

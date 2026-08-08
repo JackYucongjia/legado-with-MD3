@@ -71,6 +71,7 @@ object MainNavigator {
 
             MainRouteImportLocal,
             MainRouteImportRemote,
+            MainRouteAudiobooks,
             is MainRouteCache,
             MainRouteBookCacheManage,
             is MainRouteReadBook -> {

@@ -37,6 +37,9 @@ data object MainRouteSettingsAi : MainRoute
 data object MainRouteAiChat : MainRoute
 
 @Serializable
+data object MainRouteAudiobooks : MainRoute
+
+@Serializable
 data class MainRouteSettingsAiProviderEdit(
     val providerId: String? = null
 ) : MainRoute

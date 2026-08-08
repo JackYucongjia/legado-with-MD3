@@ -40,7 +40,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.storage.Backup
-import io.legado.app.help.update.AppUpdateGitHub
+import io.legado.app.help.update.AppUpdateGitea
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.service.WebService
 import io.legado.app.ui.about.CrashLogsDialog
@@ -346,7 +346,7 @@ open class MainActivity : BaseComposeActivity(), VariableDialog.Callback {
         if (!BuildConfig.DEBUG) {
             lifecycleScope.launch {
                 try {
-                    val info = AppUpdateGitHub.getReleaseByTag(BuildConfig.VERSION_NAME)
+                    val info = AppUpdateGitea.getReleaseByTag(BuildConfig.VERSION_NAME)
                     if (info != null) {
                         val dialog = UpdateDialog(info, UpdateDialog.Mode.VIEW_LOG)
                         dialog.setOnDismissListener { block.resume(null) }

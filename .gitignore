@@ -19,3 +19,6 @@ node_modules/
 /.vscode/settings.json
 /.codex/skills
 /.backup/
+/.audiobookshelf/
+/.gradle-codex/
+/.tools/

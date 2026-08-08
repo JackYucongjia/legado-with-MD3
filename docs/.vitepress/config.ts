@@ -136,7 +136,7 @@ export default defineConfig({
       ],
     },
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/HapeLee/legado-with-MD3' },
+      { icon: 'github', link: 'https://gitea.yamby.cn/yusheng/QieKan-3.0' },
     ],
     footer: {
       message: '基于 Apache-2.0 许可发布',
@@ -157,8 +157,8 @@ export default defineConfig({
       text: '最后更新于',
     },
     editLink: {
-      pattern: 'https://github.com/HapeLee/legado-with-MD3/edit/main/docs/:path',
-      text: '在 GitHub 上编辑此页面',
+      pattern: 'https://gitea.yamby.cn/yusheng/QieKan-3.0/_edit/main/docs/:path',
+      text: '在 Gitea 上编辑此页面',
     },
   },
   lastUpdated: true,

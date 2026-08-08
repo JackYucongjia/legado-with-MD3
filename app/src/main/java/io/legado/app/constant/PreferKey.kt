@@ -264,6 +264,8 @@ object PreferKey {
     const val paddingDisplayCutouts = "paddingDisplayCutouts"
     const val autoCheckNewBackup = "autoCheckNewBackup"
     const val backupSyncMode = "backupSyncMode"
+    const val backupFonts = "backupFonts"
+    const val backupLocalBooks = "backupLocalBooks"
     const val bookshelfLayoutGridLandscape = "bookshelfLayoutGridLandscape"
     const val bookshelfLayoutGridPortrait = "bookshelfLayoutGridPortrait"
     const val bookshelfLayoutListLandscape = "bookshelfLayoutListLandscape"

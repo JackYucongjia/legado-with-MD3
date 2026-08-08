@@ -565,6 +565,10 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
 
     val onlyLatestBackup get() = BackupConfig.onlyLatestBackup
 
+    val backupFonts get() = BackupConfig.backupFonts
+
+    val backupLocalBooks get() = BackupConfig.backupLocalBooks
+
     val autoCheckNewBackup get() = ThemeConfig.autoCheckNewBackup
 
     val defaultHomePage get() = ThemeConfig.defaultHomePage

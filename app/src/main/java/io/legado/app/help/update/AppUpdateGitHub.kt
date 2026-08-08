@@ -1,5 +1,6 @@
 package io.legado.app.help.update
 
+import io.legado.app.R
 import io.legado.app.constant.AppConst
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.config.AppConfig
@@ -11,8 +12,9 @@ import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.fromJsonObject
 import kotlinx.coroutines.CoroutineScope
+import splitties.init.appCtx
 
-object AppUpdateGitHub : AppUpdate.AppUpdateInterface {
+object AppUpdateGitea : AppUpdate.AppUpdateInterface {
 
     private const val RELEASES_API =
         "https://gitea.yamby.cn/api/v1/repos/yusheng/QieKan-3.0/releases"
@@ -22,49 +24,31 @@ object AppUpdateGitHub : AppUpdate.AppUpdateInterface {
             "official_version" -> AppVariant.OFFICIAL
             "beta_release_version" -> AppVariant.BETA_RELEASE
             "all_version" -> AppVariant.ALL
-            else -> AppConst.appInfo.appVariant
+            else -> AppConst.appInfo.appVariant.takeIf { it != AppVariant.UNKNOWN }
+                ?: AppVariant.ALL
         }
 
     private suspend fun getLatestRelease(): List<AppReleaseInfo> {
-        val url = if (checkVariant == AppVariant.OFFICIAL)
-            "$RELEASES_API/latest"
-        else
-            RELEASES_API
-
-        val res = okHttpClient.newCallResponse { url(url) }
-        if (!res.isSuccessful) throw NoStackTraceException("获取新版本出错(${res.code})")
+        // Gitea 当前没有兼容 GitHub 的 /releases/latest 路由，统一读取列表后筛选。
+        val res = okHttpClient.newCallResponse { url(RELEASES_API) }
+        if (!res.isSuccessful) throw NoStackTraceException("获取新版本出错(" + res.code + ")")
 
         val body = res.body.text()
         if (body.isBlank()) throw NoStackTraceException("获取新版本出错")
 
-        return when (checkVariant) {
-            AppVariant.BETA_RELEASE -> {
-                val releases = GSON.fromJsonArray<GithubRelease>(body)
-                    .getOrElse { throw NoStackTraceException("解析失败 ${it.localizedMessage}") }
-
-                releases.filter { it.isPreRelease }
-                    .flatMap { it.gitReleaseToAppReleaseInfo() }
-                    .sortedByDescending { it.createdAt }
+        val releases = GSON.fromJsonArray<GiteaRelease>(body)
+            .getOrElse { throw NoStackTraceException("解析失败 " + it.localizedMessage) }
+        return releases
+            .filterNot { it.isDraft }
+            .filter {
+                when (checkVariant) {
+                    AppVariant.OFFICIAL -> !it.isPreRelease
+                    AppVariant.BETA_RELEASE -> it.isPreRelease
+                    AppVariant.ALL, AppVariant.UNKNOWN -> true
+                }
             }
-
-            AppVariant.OFFICIAL -> {
-                val release = GSON.fromJsonObject<GithubRelease>(body)
-                    .getOrElse { throw NoStackTraceException("解析失败 ${it.localizedMessage}") }
-
-                release.gitReleaseToAppReleaseInfo()
-                    .sortedByDescending { it.createdAt }
-            }
-
-            AppVariant.ALL -> {
-                val releases = GSON.fromJsonArray<GithubRelease>(body)
-                    .getOrElse { throw NoStackTraceException("解析失败 ${it.localizedMessage}") }
-
-                releases.flatMap { it.gitReleaseToAppReleaseInfo() }
-                    .sortedByDescending { it.createdAt }
-            }
-
-            else -> emptyList()
-        }
+            .flatMap { it.toAppReleaseInfo() }
+            .sortedByDescending { it.createdAt }
     }
 
     suspend fun getReleaseByTag(tag: String): AppUpdate.UpdateInfo? {
@@ -73,8 +57,8 @@ object AppUpdateGitHub : AppUpdate.AppUpdateInterface {
         if (!res.isSuccessful) return null
 
         val body = res.body.text()
-        val release = GSON.fromJsonObject<GithubRelease>(body).getOrElse { return null }
-        val info = release.gitReleaseToAppReleaseInfo().firstOrNull() ?: return null
+        val release = GSON.fromJsonObject<GiteaRelease>(body).getOrElse { return null }
+        val info = release.toAppReleaseInfo().firstOrNull() ?: return null
 
         return AppUpdate.UpdateInfo(
             tagName = info.versionName,
@@ -112,7 +96,7 @@ object AppUpdateGitHub : AppUpdate.AppUpdateInterface {
                 )
             }
 
-            throw NoStackTraceException("已是最新版本")
+            throw NoStackTraceException(appCtx.getString(R.string.already_latest_version))
         }.timeout(10000)
     }
 

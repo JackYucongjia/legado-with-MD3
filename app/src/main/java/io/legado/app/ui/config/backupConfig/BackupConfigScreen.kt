@@ -347,6 +347,20 @@ fun BackupConfigScreen(
                     checked = BackupConfig.onlyLatestBackup,
                     onCheckedChange = { BackupConfig.onlyLatestBackup = it }
                 )
+
+                SwitchSettingItem(
+                    title = stringResource(R.string.backup_fonts_t),
+                    description = stringResource(R.string.backup_fonts_s),
+                    checked = BackupConfig.backupFonts,
+                    onCheckedChange = { BackupConfig.backupFonts = it }
+                )
+
+                SwitchSettingItem(
+                    title = stringResource(R.string.backup_local_books_t),
+                    description = stringResource(R.string.backup_local_books_s),
+                    checked = BackupConfig.backupLocalBooks,
+                    onCheckedChange = { BackupConfig.backupLocalBooks = it }
+                )
                 }
             }
         }

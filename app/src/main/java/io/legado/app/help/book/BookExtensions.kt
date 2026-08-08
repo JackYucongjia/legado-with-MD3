@@ -198,6 +198,7 @@ fun Book.getLocalUri(): Uri {
                         val newBook = oldBook.copy(bookUrl = newBookUrl)
                         appDb.bookDao.replace(oldBook, newBook)
                         BookHelp.updateCacheFolder(oldBook, newBook)
+                        appDb.readRecordDao.replaceBookUrl(oldBook.bookUrl, newBookUrl)
                         this.bookUrl = newBookUrl
                     }
                 }
@@ -230,6 +231,7 @@ fun Book.getLocalUri(): Uri {
                     val newBook = oldBook.copy(bookUrl = newBookUrl)
                     appDb.bookDao.replace(oldBook, newBook)
                     BookHelp.updateCacheFolder(oldBook, newBook)
+                    appDb.readRecordDao.replaceBookUrl(oldBook.bookUrl, newBookUrl)
                     this.bookUrl = newBookUrl
                 }
             }
@@ -244,13 +246,22 @@ fun Book.getLocalUri(): Uri {
 
 
 fun Book.getArchiveUri(): Uri? {
-    val defaultBookDir = OtherConfig.defaultBookTreeUri
-    return if (isArchive && !defaultBookDir.isNullOrBlank()) {
-        FileDoc.fromUri(defaultBookDir.toUri(), true)
-            .find(archiveName)?.uri
-    } else {
-        null
+    if (!isArchive) return null
+    val archiveFileName = archiveName
+    val searchDirs = listOfNotNull(
+        OtherConfig.defaultBookTreeUri,
+        AppConfig.importBookPath
+    ).filter { it.isNotBlank() }.distinct()
+    searchDirs.forEach { dir ->
+        val fileDoc = runCatching {
+            FileDoc.fromUri(dir.toUri(), true)
+                .find(archiveFileName, depth = 5, maxFinds = 100)
+        }.getOrNull()
+        if (fileDoc != null) {
+            return fileDoc.uri
+        }
     }
+    return null
 }
 
 fun Book.cacheLocalUri(uri: Uri) {

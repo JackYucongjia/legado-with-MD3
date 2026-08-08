@@ -3,7 +3,6 @@ package io.legado.app.help.update
 import android.os.Build
 import androidx.annotation.Keep
 import com.google.gson.annotations.SerializedName
-import io.legado.app.exception.NoStackTraceException
 import java.time.Instant
 
 data class AppReleaseInfo(
@@ -25,9 +24,11 @@ enum class AppVariant {
 }
 
 @Keep
-data class GithubRelease(
-    val assets: List<Asset>?,
-    val body: String,
+data class GiteaRelease(
+    val assets: List<GiteaAsset>?,
+    val body: String?,
+    @SerializedName("draft")
+    val isDraft: Boolean = false,
     @SerializedName("prerelease")
     val isPreRelease: Boolean,
     @SerializedName("tag_name")
@@ -36,8 +37,8 @@ data class GithubRelease(
     @SerializedName("created_at")
     val createdAt: String?
 ) {
-    fun gitReleaseToAppReleaseInfo(): List<AppReleaseInfo> {
-        assets ?: throw NoStackTraceException("获取新版本出错")
+    fun toAppReleaseInfo(): List<AppReleaseInfo> {
+        val releaseAssets = assets.orEmpty()
 
         val version = tagName
         val abi = Build.SUPPORTED_ABIS.firstOrNull() ?: ""
@@ -47,36 +48,38 @@ data class GithubRelease(
             else -> ""
         }
 
-        return assets
+        return releaseAssets
             .filter { it.isValid }
             .filter { asset ->
                 abiSuffix.isEmpty() || asset.name.contains(abiSuffix, ignoreCase = true)
             }
-            .map { it.assetToAppReleaseInfo(isPreRelease, body, version) }
+            .map { it.assetToAppReleaseInfo(isPreRelease, body.orEmpty(), version) }
     }
 }
 
 @Keep
-data class Asset(
+data class GiteaAsset(
     @SerializedName("browser_download_url")
-    val apkUrl: String,
+    val apkUrl: String?,
     @SerializedName("content_type")
-    val contentType: String,
+    val contentType: String?,
     @SerializedName("created_at")
-    val createdAt: String,
+    val createdAt: String?,
     @SerializedName("download_count")
     val downloadCount: Int,
     val id: Int,
     val name: String,
     val state: String?,
-    val url: String
+    val url: String?
 ) {
     val isValid: Boolean
         get() = name.endsWith(".apk", ignoreCase = true) &&
+                !apkUrl.isNullOrBlank() &&
+                !createdAt.isNullOrBlank() &&
                 (state == null || state == "uploaded")
 
     fun assetToAppReleaseInfo(preRelease: Boolean, note: String, version: String): AppReleaseInfo {
-        val instant = Instant.parse(createdAt)
+        val instant = Instant.parse(createdAt!!)
         val timestamp: Long = instant.toEpochMilli()
         val appVariant = if (preRelease) AppVariant.BETA_RELEASE else AppVariant.OFFICIAL
 
@@ -85,8 +88,8 @@ data class Asset(
             createdAt = timestamp,
             note = note,
             name = name,
-            downloadUrl = apkUrl,
-            assetUrl = url,
+            downloadUrl = apkUrl!!,
+            assetUrl = url.orEmpty(),
             versionName = version
         )
     }

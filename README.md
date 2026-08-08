@@ -1,8 +1,8 @@
 # Legado with MD3
 
 <p align="left">
-  <a href="https://github.com/HapeLee/legado-with-MD3">简体中文</a> ｜ 
-  <a href="https://github.com/HapeLee/legado-with-MD3/blob/main/English.md">English</a>
+  <a href="https://gitea.yamby.cn/yusheng/QieKan-3.0">简体中文</a> ｜
+  <a href="https://gitea.yamby.cn/yusheng/QieKan-3.0/src/branch/main/English.md">English</a>
 </p>
 
 ## 📖 介绍
@@ -50,7 +50,7 @@ Design 3 风格重构版本。
 
 * **Telegram 群组：** [Legado with MD3](https://t.me/materado)
 * **版本发布：**
-  最新版本会自动发布至群组，也可在 [GitHub Releases](https://github.com/HapeLee/legado-with-MD3/releases)
+  最新版本会自动发布至群组，也可在 [Gitea Releases](https://gitea.yamby.cn/yusheng/QieKan-3.0/releases)
   下载。
 
 ---

@@ -26,6 +26,7 @@ import io.legado.app.ui.about.AboutEffect
 import io.legado.app.ui.about.AboutScreen
 import io.legado.app.ui.about.AboutViewModel
 import io.legado.app.ui.ai.chat.AiChatRouteScreen
+import io.legado.app.ui.audiobook.AudiobookRouteScreen
 import io.legado.app.ui.book.cache.manage.BookCacheManageRouteScreen
 import io.legado.app.ui.book.explore.ExploreShowIntent
 import io.legado.app.ui.book.explore.ExploreShowScreen
@@ -98,6 +99,9 @@ fun MainActivity.mainEntryProvider(
             },
             onNavigateToChat = {
                 onNavigateToRoute(MainRouteAiChat)
+            },
+            onNavigateToAudiobooks = {
+                onNavigateToRoute(MainRouteAudiobooks)
             },
             onNavigateToSearch = { key ->
                 onNavigateToRoute(
@@ -723,5 +727,9 @@ fun MainActivity.mainEntryProvider(
             onIntent = viewModel::onIntent,
             onBack = { onNavigateBack() },
         )
+    }
+
+    entry<MainRouteAudiobooks> {
+        AudiobookRouteScreen(onBackClick = { onNavigateBack() })
     }
 }

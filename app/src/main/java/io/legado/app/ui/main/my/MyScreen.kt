@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FindReplace
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.Sell
@@ -69,6 +70,7 @@ fun MyScreen(
     viewModel: MyViewModel = koinViewModel(),
     onOpenSettings: () -> Unit,
     onNavigateToChat: () -> Unit,
+    onNavigateToAudiobooks: () -> Unit,
     onNavigate: (PrefClickEvent) -> Unit
 ) {
 
@@ -172,6 +174,12 @@ fun MyScreen(
             SplicedColumnGroup(
                 title = stringResource(R.string.other)
             ) {
+                ClickableSettingItem(
+                    title = stringResource(R.string.audiobookshelf_title),
+                    description = stringResource(R.string.audiobookshelf_entry_description),
+                    imageVector = Icons.Default.Headphones,
+                    onClick = onNavigateToAudiobooks
+                )
                 ClickableSettingItem(
                     title = stringResource(R.string.ai_chat),
                     imageVector = Icons.Default.AutoAwesome,

@@ -57,5 +57,5 @@
 
 ## 外部资源
 
-- [Legado GitHub](https://github.com/HapeLee/legado-with-MD3) — 项目源码和 Issue 跟踪
-- [legado-with-MD3 Wiki](https://github.com/HapeLee/legado-with-MD3/wiki) — 社区维护的文档
+- [QieKan-3.0 Gitea](https://gitea.yamby.cn/yusheng/QieKan-3.0) — 项目源码和 Issue 跟踪
+- [QieKan-3.0 Wiki](https://gitea.yamby.cn/yusheng/QieKan-3.0/wiki) — 社区维护的文档

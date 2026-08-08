@@ -256,6 +256,7 @@
     <string name="paste_source">Paste source</string>
     <string name="source_rule_s">Source rules description</string>
     <string name="check_update">Check for Updates</string>
+    <string name="already_latest_version">You are already using the latest version</string>
     <string name="camera_scan">Scan QR code</string>
     <string name="scan_image">Scan local images</string>
     <string name="rule_summary">Rules description</string>
@@ -901,7 +902,7 @@
     <string name="alipay_red_envelope_qr_code">AliPay red envelope QR code</string>
     <string name="alipay_payment_qr_code">AliPay QR code</string>
     <string name="qq_collection_qr_code">QQ Collection QR code</string>
-    <string name="contributors_summary">gedoor,Invinciblelee,Xwite etc. Checking in github for details</string>
+    <string name="contributors_summary">gedoor,Invinciblelee,Xwite etc. See the Gitea project for details</string>
     <string name="clear_cache_summary">Clear the cache of the downloaded books and fonts</string>
     <string name="default_cover">Default Cover</string>
     <string name="restore_ignore">Bypass List</string>
@@ -1347,6 +1348,10 @@
     <string name="set_local_password_summary">The local password is used to encrypt and decrypt the sensitive information of the backup, if you need to synchronize between different devices, the local password should be the same.</string>
     <string name="only_latest_backup_t">Keep Only the Latest Backup</string>
     <string name="only_latest_backup_s">Local backup keeps only the latest backup file</string>
+    <string name="backup_fonts_t">Backup Custom Fonts</string>
+    <string name="backup_fonts_s">Include custom fonts used in reading settings in the backup, and restore them on the target device</string>
+    <string name="backup_local_books_t">Backup Local Books</string>
+    <string name="backup_local_books_s">Include the files of local books in the backup, and restore them to the book save folder on the target device</string>
     <string name="webdav_application_authorization_error">Fail to authorize WebDAV application</string>
     <string name="respondTime">respondTime: %1$d ms</string>
     <string name="load_word_count">Load word count</string>
@@ -2250,4 +2255,28 @@
     <string name="cover_album_imported_name">%1$s (Imported)</string>
     <string name="cover_album_day_night_count">Light %1$d · Dark %2$d</string>
     <string name="cover_album_selected">Currently selected</string>
+    <string name="audiobookshelf_title">Audiobooks</string>
+    <string name="audiobookshelf_entry_description">Connect to an Audiobookshelf server</string>
+    <string name="audiobookshelf_server_section">Server</string>
+    <string name="audiobookshelf_library_section">Libraries</string>
+    <string name="audiobookshelf_actions_section">Connection</string>
+    <string name="audiobookshelf_server_name">Server name</string>
+    <string name="audiobookshelf_server_url">Server address</string>
+    <string name="audiobookshelf_server_url_example">https://example.com/audiobookshelf</string>
+    <string name="audiobookshelf_username">Username</string>
+    <string name="audiobookshelf_password">Password</string>
+    <string name="audiobookshelf_connect">Connect and sign in</string>
+    <string name="audiobookshelf_reconnect">Sign in again</string>
+    <string name="audiobookshelf_refresh">Refresh</string>
+    <string name="audiobookshelf_edit_connection">Edit connection</string>
+    <string name="audiobookshelf_server_version">Server version: %1$s</string>
+    <string name="audiobookshelf_http_warning">HTTP sends account tokens without transport encryption. Use it only on a trusted LAN.</string>
+    <string name="audiobookshelf_no_libraries">No accessible libraries</string>
+    <string name="audiobookshelf_no_libraries_desc">Check this account\'s library permissions on the server.</string>
+    <string name="audiobookshelf_library_books">Audiobook library</string>
+    <string name="audiobookshelf_library_podcasts">Podcast library</string>
+    <string name="audiobookshelf_forget_title">Remove this server?</string>
+    <string name="audiobookshelf_forget_message">The local connection and encrypted refresh token will be removed. Server data will not be changed.</string>
+    <string name="audiobookshelf_forget_confirm">Remove server</string>
+    <string name="audiobookshelf_cancel">Cancel</string>
 </resources>

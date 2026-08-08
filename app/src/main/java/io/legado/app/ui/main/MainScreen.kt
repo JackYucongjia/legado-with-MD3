@@ -118,6 +118,7 @@ fun MainScreen(
     useRail: Boolean,
     onOpenSettings: () -> Unit,
     onNavigateToChat: () -> Unit,
+    onNavigateToAudiobooks: () -> Unit,
     onNavigateToSearch: (String?) -> Unit,
     onNavigateToRemoteImport: () -> Unit,
     onNavigateToLocalImport: () -> Unit,
@@ -478,6 +479,7 @@ fun MainScreen(
                             MainDestination.My -> MyScreen(
                                 onOpenSettings = onOpenSettings,
                                 onNavigateToChat = onNavigateToChat,
+                                onNavigateToAudiobooks = onNavigateToAudiobooks,
                                 onNavigate = { event ->
                                     when (event) {
                                         PrefClickEvent.OpenBookCacheManage -> onNavigateToBookCacheManage()

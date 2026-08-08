@@ -88,6 +88,7 @@ private fun MaterialAboutScreen(
     val privacyPolicyTitle = stringResource(R.string.about_privacy_policy_title)
     val licenseTitle = stringResource(R.string.about_license_title)
     val disclaimerTitle = stringResource(R.string.about_disclaimer_title)
+    val giteaUrl = stringResource(R.string.gitea_url)
 
     AppScaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -145,13 +146,13 @@ private fun MaterialAboutScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
-                FilledTonalIconButton(onClick = { onIntent(AboutIntent.OpenUrl("https://gitea.yamby.cn/yusheng/QieKan-3.0")) }) {
+                FilledTonalIconButton(onClick = { onIntent(AboutIntent.OpenUrl(giteaUrl)) }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_web_outline),
                         contentDescription = stringResource(R.string.back)
                     )
                 }
-                FilledTonalIconButton(onClick = { onIntent(AboutIntent.OpenUrl("https://gitea.yamby.cn/yusheng/QieKan-3.0")) }) {
+                FilledTonalIconButton(onClick = { onIntent(AboutIntent.OpenUrl(giteaUrl)) }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_github),
                         contentDescription = stringResource(R.string.back)
@@ -172,7 +173,7 @@ private fun MaterialAboutScreen(
                 SettingItemWithDivider {
                     SettingItem(
                         title = stringResource(R.string.contributors),
-                        onClick = { onIntent(AboutIntent.OpenUrl("https://gitea.yamby.cn/yusheng/QieKan-3.0")) }
+                        onClick = { onIntent(AboutIntent.OpenUrl(giteaUrl)) }
                     )
                 }
                 SettingItemWithDivider {
